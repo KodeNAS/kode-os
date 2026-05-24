@@ -156,7 +156,23 @@ if [[ $UNINSTALL -eq 1 ]]; then
   # which only `--purge` should touch).
   if command -v casaos-uninstall >/dev/null 2>&1; then
     log "Running casaos-uninstall (this stops + removes all casaos-* services)…"
-    casaos-uninstall </dev/null >/tmp/kode-os-casaos-uninstall.log 2>&1 || warn "casaos-uninstall reported a non-zero exit — log: /tmp/kode-os-casaos-uninstall.log"
+    # casaos-uninstall is interactive — it `read -p`s for a y/N
+    # confirmation and hangs forever on EOF. Force-feed a stream of
+    # `y` so it always answers yes, and cap the call with a 90s
+    # timeout so a deeper-stuck call still surrenders. Output goes
+    # to a log file we tail if the call exits non-zero.
+    if ! timeout 90 bash -c 'yes y | casaos-uninstall' >/tmp/kode-os-casaos-uninstall.log 2>&1; then
+      warn "casaos-uninstall hung or exited non-zero. Falling back to manual teardown."
+      warn "Full log: /tmp/kode-os-casaos-uninstall.log"
+      for svc in casaos casaos-gateway casaos-message-bus casaos-user-service \
+                 casaos-local-storage casaos-app-management rclone; do
+        systemctl disable --now "${svc}.service" 2>/dev/null || true
+      done
+      rm -f /usr/bin/casaos /usr/bin/casaos-* /usr/bin/casaos-cli
+      rm -f /etc/systemd/system/casaos*.service \
+            /etc/systemd/system/multi-user.target.wants/casaos*.service
+      rm -rf /etc/casaos /var/lib/casaos /usr/share/casaos
+    fi
   else
     # Fallback: stop services we know about manually.
     log "casaos-uninstall not found — stopping known casaos-* services manually."
