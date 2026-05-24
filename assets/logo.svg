@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" width="200" height="40" role="img" aria-label="KODE NAS">
+  <g fill="currentColor">
+    <path transform="translate(0 0)" d="M 4 4 H 12 V 17 L 26 4 H 38 L 21 20 L 38 36 H 26 L 12 23 V 36 H 4 Z"/>
+    <text x="50" y="28" font-family="system-ui, -apple-system, 'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="1.2">KODE<tspan font-weight="400" dx="6">NAS</tspan></text>
+  </g>
+</svg>

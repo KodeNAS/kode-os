@@ -1,0 +1,35 @@
+# OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Claude Code working state
+.claude/
+docs/auto-deploy-stamps  # legacy
+.auto-deploy.stamps
+
+# Local screenshots / scratch
+Screenshot_*.png
+scratch/
+tmp/
+
+# kode-os-ui lives in its own repo — installer clones it at deploy time.
+# Tracking the sub-tree here would duplicate history and bloat this repo.
+kode-os-ui/
+
+# Bash scratch
+*.log

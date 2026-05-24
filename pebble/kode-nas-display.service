@@ -1,0 +1,23 @@
+[Unit]
+Description=KODE NAS pebble OLED display daemon
+Documentation=https://github.com/kode-nas/kode-os
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kode
+Group=kode
+ExecStart=/usr/bin/python3 /home/kode/kode_nas_display.py
+Restart=on-failure
+RestartSec=5
+# Hardening — the daemon only reads SPI + /proc + posts HTTP to local apps.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/tmp
+DevicePolicy=closed
+DeviceAllow=/dev/spidev0.0 rw
+
+[Install]
+WantedBy=multi-user.target

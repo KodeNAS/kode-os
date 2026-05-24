@@ -1,0 +1,26 @@
+KODE OS
+Copyright 2026 KODE NAS
+
+This product includes software developed by:
+
+  IceWhale Technology Co., Ltd. — https://github.com/IceWhaleTech/CasaOS
+  Licensed under the Apache License, Version 2.0
+  https://www.apache.org/licenses/LICENSE-2.0
+
+KODE OS is a derivative work of CasaOS. The CasaOS source tree, license,
+and copyright notices are preserved as required by the Apache 2.0 license.
+KODE OS additions are © KODE NAS and licensed under the same terms (see
+LICENSE in this repository).
+
+User-visible KODE OS branding (logo, name, color palette, typography,
+copy) is © KODE NAS and may be subject to additional trademark
+protections. CasaOS branding is the property of IceWhale Technology.
+
+Apps shipped via KODE OS (Immich, Jellyfin, File Browser, Pi-hole, Home
+Assistant, etc.) are each licensed by their respective authors. KODE OS
+does not modify their source — it bundles their official Docker images
+and links to their projects.
+
+Third-party libraries used in the KODE OS UI ship under their own
+licenses (MIT, Apache 2.0, ISC). See `kode-os-ui/package.json` and the
+upstream CasaOS NOTICE for the full dependency tree.
