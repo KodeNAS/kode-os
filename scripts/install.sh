@@ -12,10 +12,24 @@
 #   sudo ./scripts/install.sh
 #
 # Flags:
-#   --uninstall   remove KODE OS + the OLED daemon. Leaves /DATA alone.
-#   --skip-casaos skip the upstream CasaOS install (advanced)
-#   --no-oled     don't install the SH1122 OLED daemon
-#   --version VER pin to a specific KODE OS UI release (default: latest)
+#   --uninstall    Remove KODE OS UI overlay + OLED daemon + CasaOS
+#                  runtime. Keeps Docker, /DATA, and system packages
+#                  CasaOS pulled in (samba, smartmontools, etc).
+#   --uninstall --purge
+#                  Above + remove all KODE-installed Docker containers
+#                  + images + volumes + the Docker API override + the
+#                  kode user (if we created one). Keeps Docker itself
+#                  + /DATA.
+#   --uninstall --wipe-data
+#                  Adds /DATA wipe to whatever uninstall mode you're
+#                  in. Requires typing WIPE to confirm. Combine with
+#                  --purge for the full nuke.
+#   --uninstall --yes
+#                  Skip the type-WIPE confirmation. For automation.
+#                  Use with care.
+#   --skip-casaos  Skip the upstream CasaOS install (advanced)
+#   --no-oled      Don't install the SH1122 OLED daemon
+#   --version VER  Pin to a specific KODE OS UI release (default: latest)
 #
 # This is an alpha installer. Expect rough edges. Don't run it on hardware
 # you can't reflash.
@@ -36,6 +50,9 @@ NODE_MAJOR=20
 CASAOS_LOG="/tmp/kode-os-casaos-install.log"
 
 UNINSTALL=0
+PURGE=0
+WIPE_DATA=0
+ASSUME_YES=0
 SKIP_CASAOS=0
 INSTALL_OLED=auto      # auto = install only if /dev/spidev0.0 exists
 
@@ -45,11 +62,16 @@ KODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --uninstall) UNINSTALL=1; shift ;;
+    --purge) PURGE=1; shift ;;
+    --wipe-data) WIPE_DATA=1; shift ;;
+    --yes|-y) ASSUME_YES=1; shift ;;
     --skip-casaos) SKIP_CASAOS=1; shift ;;
     --no-oled) INSTALL_OLED=0; shift ;;
     --version) KODE_UI_REF="$2"; shift 2 ;;
     -h|--help)
-      grep -E '^#' "$0" | sed 's/^# \{0,1\}//' | head -25
+      # Print the file-header comment block (stops at the first
+      # blank line so later inline comments don't leak into --help).
+      sed -n '1,/^$/p' "$0" | sed 's/^#\!.*//;s/^# \{0,1\}//' | head -40
       exit 0 ;;
     *) echo "Unknown flag: $1" >&2; exit 1 ;;
   esac
@@ -80,17 +102,151 @@ detect_oled() {
 }
 
 # ---- uninstall path ----
+# Tiered: --uninstall is the safe default (KODE + CasaOS gone, data
+# kept). --purge adds Docker app teardown + system cleanup. --wipe-data
+# nukes /DATA. All destructive tiers require a typed WIPE confirmation
+# unless --yes is also passed.
 if [[ $UNINSTALL -eq 1 ]]; then
   require_root
-  log "Uninstalling KODE OS…"
+
+  echo
+  echo "Uninstall plan:"
+  echo "  ✓ Stop + disable KODE OS daemons (OLED display, etc.)"
+  echo "  ✓ Remove KODE UI overlay from /var/lib/casaos/www"
+  echo "  ✓ Run the upstream casaos-uninstall (removes casaos-* services + binaries)"
+  if (( PURGE )); then
+    echo "  ✓ [--purge] Stop + remove ALL Docker containers KODE installed"
+    echo "  ✓ [--purge] Remove the Docker API compatibility override"
+    echo "  ✓ [--purge] Remove the kode user (if no other home dir uses it)"
+  fi
+  if (( WIPE_DATA )); then
+    echo "  ⚠ [--wipe-data] Recursively delete /DATA (photos, files, app data)"
+  fi
+  echo
+  echo "What this WILL keep regardless:"
+  echo "  • Docker itself (use 'apt purge docker-ce' separately if you want it gone)"
+  echo "  • System packages CasaOS pulled in (smartmontools, samba, mergerfs, rclone…)"
+  if ! (( WIPE_DATA )); then
+    echo "  • Everything under /DATA"
+  fi
+  echo
+
+  # Type-WIPE confirmation for any tier that touches user data or
+  # tears down Docker apps. Bypassed with --yes for automation.
+  if (( WIPE_DATA || PURGE )) && ! (( ASSUME_YES )); then
+    read -r -p "Type WIPE to confirm: " confirm
+    if [[ "$confirm" != "WIPE" ]]; then
+      fail "Confirmation didn't match. Aborted, nothing removed."
+    fi
+  fi
+
+  # --- KODE OS bits ---
+  log "Stopping KODE OS daemons…"
   systemctl disable --now kode-nas-display.service 2>/dev/null || true
   rm -f /etc/systemd/system/kode-nas-display.service
   rm -f /home/kode/kode_nas_display.py /home/kode/restart-display.sh /tmp/oled.log
-  systemctl daemon-reload
+
   log "Removing KODE UI overlay from /var/lib/casaos/www…"
   rm -rf /var/lib/casaos/www
-  log "KODE OS removed. /DATA is untouched."
-  log "To also remove CasaOS upstream:  curl -fsSL https://get.casaos.io/uninstall | sudo bash"
+
+  # --- CasaOS upstream runtime ---
+  # The upstream installer provides a `casaos-uninstall` helper that
+  # stops every casaos-* service, removes binaries from /usr/bin, and
+  # cleans /etc/casaos + /var/lib/casaos (except apps + their data,
+  # which only `--purge` should touch).
+  if command -v casaos-uninstall >/dev/null 2>&1; then
+    log "Running casaos-uninstall (this stops + removes all casaos-* services)…"
+    casaos-uninstall </dev/null >/tmp/kode-os-casaos-uninstall.log 2>&1 || warn "casaos-uninstall reported a non-zero exit — log: /tmp/kode-os-casaos-uninstall.log"
+  else
+    # Fallback: stop services we know about manually.
+    log "casaos-uninstall not found — stopping known casaos-* services manually."
+    for svc in casaos casaos-gateway casaos-message-bus casaos-user-service \
+               casaos-local-storage casaos-app-management rclone; do
+      systemctl disable --now "${svc}.service" 2>/dev/null || true
+    done
+    rm -f /usr/bin/casaos /usr/bin/casaos-* /usr/bin/casaos-cli
+    rm -rf /etc/casaos /var/lib/casaos /usr/share/casaos
+  fi
+  systemctl daemon-reload
+
+  # --- --purge — Docker teardown + Docker override + kode user ---
+  if (( PURGE )); then
+    if command -v docker >/dev/null 2>&1; then
+      log "Stopping + removing KODE-installed Docker containers…"
+      # Compose apps live under /var/lib/casaos/apps/ — but with
+      # casaos-uninstall already run, that path may be gone. Fall
+      # back to listing every container + image and removing those
+      # whose label/name matches our app set.
+      KODE_APPS="immich jellyfin filebrowser pihole homeassistant big-bear-home-assistant"
+      for app in $KODE_APPS; do
+        # Stop + remove containers matching the app name or label.
+        for cid in $(docker ps -aq --filter "name=^/${app}" 2>/dev/null); do
+          docker rm -f "$cid" >/dev/null 2>&1 || true
+        done
+        for cid in $(docker ps -aq --filter "label=com.docker.compose.project=${app}" 2>/dev/null); do
+          docker rm -f "$cid" >/dev/null 2>&1 || true
+        done
+      done
+
+      # Best-effort image cleanup for the canonical KODE app images.
+      log "Removing KODE app Docker images (best-effort)…"
+      for img in $(docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null \
+        | grep -iE 'immich|jellyfin|filebrowser|pihole|home-assistant|hass' || true); do
+        docker rmi -f "$img" >/dev/null 2>&1 || true
+      done
+
+      # Volumes + networks
+      log "Pruning leftover KODE app Docker volumes + networks…"
+      docker volume prune -f >/dev/null 2>&1 || true
+      docker network prune -f >/dev/null 2>&1 || true
+    fi
+
+    # CasaOS dropped a Docker API compatibility override on first
+    # install — yank it so Docker comes back to a stock config.
+    if [[ -f /etc/systemd/system/docker.service.d/override.conf ]]; then
+      log "Removing Docker API compatibility override…"
+      rm -f /etc/systemd/system/docker.service.d/override.conf
+      rmdir /etc/systemd/system/docker.service.d 2>/dev/null || true
+      systemctl daemon-reload
+      systemctl restart docker 2>/dev/null || true
+    fi
+
+    # Remove the kode user — but only if their home is empty (avoid
+    # nuking SSH keys + dotfiles the buyer might want to keep). The
+    # user may also have non-KODE work on the system.
+    if id kode >/dev/null 2>&1; then
+      if [[ -z "$(ls -A /home/kode 2>/dev/null | grep -v -E '^\.bash_history$|^\.bash_logout$|^\.bashrc$|^\.profile$|^\.ssh$')" ]]; then
+        log "Removing kode user (home dir is otherwise empty)…"
+        userdel -r kode 2>/dev/null || true
+      else
+        warn "Keeping kode user — /home/kode has non-default files."
+      fi
+    fi
+  fi
+
+  # --- --wipe-data — /DATA nuke ---
+  if (( WIPE_DATA )); then
+    log "Wiping /DATA (this can take a minute on full drives)…"
+    if [[ -d /DATA ]]; then
+      # Recurse but skip hidden dotdirs at the top level (mount points,
+      # system markers). Same heuristic the Factory Reset modal uses.
+      find /DATA -mindepth 1 -maxdepth 1 ! -name '.*' -exec rm -rf {} +
+    fi
+  fi
+
+  log ""
+  log "✓ KODE OS uninstalled."
+  if (( PURGE )); then log "✓ Docker apps + override + (maybe) kode user removed."; fi
+  if (( WIPE_DATA )); then log "✓ /DATA wiped."; fi
+  if ! (( PURGE )); then
+    log ""
+    log "To also remove Docker containers + the API override, re-run with:"
+    log "    sudo ./scripts/install.sh --uninstall --purge"
+  fi
+  if ! (( WIPE_DATA )); then
+    log "To also wipe /DATA, add --wipe-data."
+  fi
+  log "To remove Docker itself:  sudo apt purge -y docker-ce docker-ce-cli containerd.io"
   exit 0
 fi
 
