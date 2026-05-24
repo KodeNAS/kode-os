@@ -33,3 +33,8 @@ kode-os-ui/
 
 # Bash scratch
 *.log
+
+# Personal-only files (you said you'd delete these later — keeping them
+# out of git so an accidental `git add -A` doesn't pull them in)
+_assets-reference/
+DESIGN.md

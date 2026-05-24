@@ -26,7 +26,14 @@ set -euo pipefail
 KODE_UI_REPO="https://github.com/KodeNAS/kode-os-ui.git"
 KODE_UI_REF="${KODE_UI_REF:-main}"
 CASAOS_INSTALL_URL="https://get.casaos.io/install"
-NODE_MAJOR=18
+# Node 20 LTS — Node 18 is end-of-life as of Apr 2025 and the NodeSource
+# installer prints a 10-second deprecation warning every time it runs.
+NODE_MAJOR=20
+# The wrapped CasaOS upstream installer is loud (banner, download
+# progress, migration script noise, its own final "running at" block).
+# We redirect its stdout to this file so the screen stays clean but
+# the full log is preserved for debugging.
+CASAOS_LOG="/tmp/kode-os-casaos-install.log"
 
 UNINSTALL=0
 SKIP_CASAOS=0
@@ -91,6 +98,21 @@ fi
 require_root
 detect_pi
 
+# KODE OS banner — printed before any of the wrapped installer output
+# so the user sees our branding first, even if CasaOS's own banner
+# shows up later in the log file.
+cat <<'BANNER'
+
+ _  _____  ___  ____    ___  ___
+| |/ / _ \|   \| ___|  / _ \/ __|
+| ' < (_) | |) | _|   | (_) \__ \
+|_|\_\___/|___/|___|   \___/|___/
+
+  KODE OS installer · alpha · KODE NAS
+  https://github.com/KodeNAS/kode-os
+
+BANNER
+
 # 1. Prereqs
 log "Installing prerequisites…"
 apt-get update -qq
@@ -105,13 +127,22 @@ else
   log "Docker already installed: $(docker --version | head -1)"
 fi
 
-# 3. CasaOS upstream runtime
+# 3. CasaOS upstream runtime (the OS engine KODE OS runs on top of).
+# The upstream installer is verbose and prints its own banner + final
+# "running at" message — both branded as CasaOS. We redirect all of
+# its output to $CASAOS_LOG so the screen stays clean. The KODE OS
+# success banner at the end is what the user sees instead.
 if [[ $SKIP_CASAOS -eq 0 ]]; then
   if ! systemctl list-unit-files | grep -q casaos-gateway; then
-    log "Installing CasaOS upstream runtime…"
-    curl -fsSL "$CASAOS_INSTALL_URL" | bash
+    log "Installing OS runtime (this is the upstream CasaOS layer KODE OS rides on — takes ~2 min)…"
+    log "  Full log: $CASAOS_LOG"
+    if curl -fsSL "$CASAOS_INSTALL_URL" | bash >"$CASAOS_LOG" 2>&1; then
+      log "OS runtime installed."
+    else
+      fail "Upstream CasaOS install failed. Tail of the log: $(tail -20 "$CASAOS_LOG" | sed 's/^/    /')"
+    fi
   else
-    log "CasaOS already installed: $(casaos-cli --version 2>/dev/null || echo 'unknown')"
+    log "OS runtime already installed."
   fi
 fi
 
@@ -178,16 +209,26 @@ if [[ $INSTALL_OLED -eq 1 ]]; then
   systemctl enable --now kode-nas-display.service
 fi
 
-# 7. Done — print access info
+# 7. Done — print access info. KODE OS banner (NOT CasaOS's) is the
+# last thing on screen so the buyer's first impression is ours.
 HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-log ""
-log "✓ KODE OS installed."
-log ""
-log "Open your dashboard at:"
-log "    http://${HOST_IP}/"
-log "    http://$(hostname).local/"
-log ""
-log "First-boot wizard will run on first visit. Five minutes from box-open to working."
-log ""
-log "For HTTPS:  sudo $KODE_ROOT/scripts/setup-pebble-https.sh"
-log "To uninstall: sudo $KODE_ROOT/scripts/install.sh --uninstall"
+cat <<EOF
+
+────────────────────────────────────────────────────────────
+  ✓ KODE OS installed.
+
+  Open your dashboard at:
+      http://${HOST_IP}/
+      http://$(hostname).local/
+
+  The first-boot wizard runs on first visit.
+  About five minutes from box-open to working.
+────────────────────────────────────────────────────────────
+
+  HTTPS (optional):  sudo ${KODE_ROOT}/scripts/setup-pebble-https.sh
+  Uninstall:         sudo ${KODE_ROOT}/scripts/install.sh --uninstall
+  Upstream log:      ${CASAOS_LOG}
+
+  Made by KODE NAS · pebble v1
+  Based on CasaOS (Apache 2.0) — github.com/IceWhaleTech/CasaOS
+EOF
