@@ -70,4 +70,4 @@ When this policy changes materially, the new version will land in this file (`PR
 
 ## Contact
 
-For privacy questions or to report a concern: open an issue at https://github.com/kode-nas/kode-os/issues or email privacy@kode-nas.com (the latter goes live with the first public release).
+For privacy questions or to report a concern: open an issue at https://github.com/KodeNAS/kode-os/issues or email privacy@kode-nas.com (the latter goes live with the first public release).

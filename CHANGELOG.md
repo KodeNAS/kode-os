@@ -59,5 +59,5 @@ First publishable alpha. Forked from CasaOS 0.4.5.
 
 ---
 
-[unreleased]: https://github.com/kode-nas/kode-os/compare/v0.1.0-alpha...HEAD
-[0.1.0-alpha]: https://github.com/kode-nas/kode-os/releases/tag/v0.1.0-alpha
+[unreleased]: https://github.com/KodeNAS/kode-os/compare/v0.1.0-alpha...HEAD
+[0.1.0-alpha]: https://github.com/KodeNAS/kode-os/releases/tag/v0.1.0-alpha

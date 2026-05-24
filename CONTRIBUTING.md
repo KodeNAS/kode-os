@@ -21,8 +21,8 @@ You need:
 
 ```bash
 # Clone both repos side by side
-git clone https://github.com/kode-nas/kode-os.git
-git clone https://github.com/kode-nas/kode-os-ui.git
+git clone https://github.com/KodeNAS/kode-os.git
+git clone https://github.com/KodeNAS/kode-os-ui.git
 
 cd kode-os-ui
 pnpm install
@@ -69,7 +69,7 @@ By submitting a contribution you agree it can be released under the [Apache Lice
 
 ## Questions
 
-GitHub Discussions: https://github.com/kode-nas/kode-os/discussions  
+GitHub Discussions: https://github.com/KodeNAS/kode-os/discussions  
 Email (general): hello@kode-nas.com *(live with the first public alpha)*
 
 Thanks for helping make a NAS that grandparents can actually use.

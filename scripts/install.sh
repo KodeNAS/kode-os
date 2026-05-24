@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # KODE OS installer
-# https://github.com/kode-nas/kode-os
+# https://github.com/KodeNAS/kode-os
 #
 # Usage (on a fresh Raspberry Pi OS Lite install, as root):
 #
@@ -23,7 +23,7 @@
 set -euo pipefail
 
 # ---- config ----
-KODE_UI_REPO="https://github.com/kode-nas/kode-os-ui.git"
+KODE_UI_REPO="https://github.com/KodeNAS/kode-os-ui.git"
 KODE_UI_REF="${KODE_UI_REF:-main}"
 CASAOS_INSTALL_URL="https://get.casaos.io/install"
 NODE_MAJOR=18

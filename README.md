@@ -50,7 +50,7 @@ curl -fsSL https://kode-nas.com/install.sh | sudo bash
 On a fresh Raspberry Pi OS Lite install, SSH in and run:
 
 ```bash
-git clone https://github.com/kode-nas/kode-os.git
+git clone https://github.com/KodeNAS/kode-os.git
 cd kode-os
 sudo ./scripts/install.sh
 ```
@@ -92,7 +92,7 @@ kode-os/
 └── kode-os-ui/        (separate repo) the Vue 2 dashboard UI
 ```
 
-The UI lives in its own repo at [kode-nas/kode-os-ui](https://github.com/kode-nas/kode-os-ui) — the installer clones it, builds it, and copies the production assets onto the pebble.
+The UI lives in its own repo at [KodeNAS/kode-os-ui](https://github.com/KodeNAS/kode-os-ui) — the installer clones it, builds it, and copies the production assets onto the pebble.
 
 ---
 
@@ -126,6 +126,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and pull requests welcome — ple
 
 - **Status:** alpha, internal testing
 - **First public release target:** TBD
-- **Issues:** https://github.com/kode-nas/kode-os/issues
+- **Issues:** https://github.com/KodeNAS/kode-os/issues
 - **Security:** see [SECURITY.md](SECURITY.md)
 - **Commercial support / pebble hardware:** https://kode-nas.com
