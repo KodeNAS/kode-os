@@ -8,6 +8,13 @@ Wants=network-online.target
 Type=simple
 User=kode
 Group=kode
+# CWD must be writable. lgpio's C library does mkfifo('.lgd-nfy<N>')
+# in CWD at import time for its notification thread — with the systemd
+# default CWD=/ + ProtectSystem=strict the mkfifo silently fails and
+# the Python open() then errors with FileNotFoundError, killing the
+# daemon before it can talk to the OLED. /tmp is already in
+# ReadWritePaths below, so it's a safe writable home for the FIFOs.
+WorkingDirectory=/tmp
 # gpio + spi own the device nodes the daemon needs (gpiochip0, gpiomem0,
 # spidev0.0). Listed here in addition to usermod -aG so the unit works
 # even when group state hasn't been re-read for the kode user yet.
