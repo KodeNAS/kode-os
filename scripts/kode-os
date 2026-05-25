@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+#
+# kode-os — KODE OS device CLI
+#
+# Installed by scripts/install.sh as /usr/local/bin/kode-os (symlink),
+# but also runnable directly out of the cloned repo as
+# ./scripts/kode-os <command>.
+#
+# Resolves its real location with readlink -f so it can find the repo
+# it was installed from even when invoked through the symlink.
+#
+
+set -euo pipefail
+
+SCRIPT_PATH="$(readlink -f "$0")"
+REPO_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+
+cmd="${1:-help}"
+shift || true
+
+# Subcommands that need root re-exec under sudo.
+case "$cmd" in
+  update|uninstall)
+    if [[ $EUID -ne 0 ]]; then
+      exec sudo "$0" "$cmd" "$@"
+    fi
+    ;;
+esac
+
+case "$cmd" in
+  update)
+    if [[ ! -d "$REPO_DIR/.git" ]]; then
+      echo "kode-os: $REPO_DIR isn't a git checkout — can't update." >&2
+      echo "         Re-install: git clone https://github.com/KodeNAS/kode-os.git && sudo ./kode-os/scripts/install.sh" >&2
+      exit 1
+    fi
+    cd "$REPO_DIR"
+    echo "[kode-os] Fetching latest from GitHub…"
+    # -C is important: even though we cd'd, sudo can clobber GIT_DIR
+    # detection if anything weird's in the env.
+    git -C "$REPO_DIR" fetch --quiet --tags origin
+    LOCAL_HEAD="$(git -C "$REPO_DIR" rev-parse HEAD)"
+    REMOTE_HEAD="$(git -C "$REPO_DIR" rev-parse origin/main)"
+    if [[ "$LOCAL_HEAD" == "$REMOTE_HEAD" ]]; then
+      echo "[kode-os] Already up to date ($LOCAL_HEAD)."
+      exit 0
+    fi
+    echo "[kode-os] Updating: ${LOCAL_HEAD:0:7} → ${REMOTE_HEAD:0:7}"
+    git -C "$REPO_DIR" merge --ff-only origin/main
+    echo "[kode-os] Re-running installer (idempotent)…"
+    exec "$REPO_DIR/scripts/install.sh" "$@"
+    ;;
+  uninstall)
+    exec "$REPO_DIR/scripts/install.sh" --uninstall "$@"
+    ;;
+  version)
+    if [[ -d "$REPO_DIR/.git" ]]; then
+      ( cd "$REPO_DIR" && git describe --tags --always --dirty 2>/dev/null \
+        || git -C "$REPO_DIR" rev-parse --short HEAD )
+    elif [[ -f "$REPO_DIR/CHANGELOG.md" ]]; then
+      grep -m1 -oE '^##? +\[?v?[0-9][^]]*' "$REPO_DIR/CHANGELOG.md" | sed 's/^##* *//;s/^\[//'
+    else
+      echo "unknown"
+    fi
+    ;;
+  help|--help|-h|"")
+    cat <<EOF
+kode-os — KODE OS device CLI
+
+Usage:
+  kode-os update              Pull latest from GitHub and re-run the installer
+  kode-os uninstall [flags]   Remove KODE OS (forwards flags to install.sh --uninstall)
+                              e.g. kode-os uninstall --purge --wipe-data
+  kode-os version             Show the installed version
+
+Runs from /usr/local/bin/kode-os on a pebble; needs sudo for update + uninstall
+(the CLI will re-exec under sudo if you forget).
+EOF
+    ;;
+  *)
+    echo "kode-os: unknown command '$cmd'. Run 'kode-os help'." >&2
+    exit 1
+    ;;
+esac

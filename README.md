@@ -66,13 +66,26 @@ The script:
 
 Open `https://pebble.local` in any browser on the same network and run through the wizard.
 
+### Update
+
+Once installed, KODE OS gives you a `kode-os` CLI:
+
+```bash
+sudo kode-os update    # pull latest from GitHub + re-run the installer
+sudo kode-os version   # show installed version
+```
+
+The installer is idempotent — re-running it only changes what's actually different.
+
 ### Uninstall
 
 ```bash
-sudo ./scripts/install.sh --uninstall
+sudo kode-os uninstall              # remove KODE OS + OLED daemon + CasaOS runtime
+sudo kode-os uninstall --purge      # also remove KODE-installed Docker apps + the kode user
+sudo kode-os uninstall --wipe-data  # also delete /DATA (requires typing WIPE to confirm)
 ```
 
-Removes KODE OS, the OLED daemon, and the CasaOS runtime. Leaves your `/DATA` folder untouched.
+The bare `uninstall` leaves Docker, `/DATA`, and CasaOS-pulled system packages alone.
 
 ---
 

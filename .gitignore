@@ -38,3 +38,4 @@ kode-os-ui/
 # out of git so an accidental `git add -A` doesn't pull them in)
 _assets-reference/
 DESIGN.md
+fix.md

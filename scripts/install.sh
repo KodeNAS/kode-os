@@ -146,6 +146,9 @@ if [[ $UNINSTALL -eq 1 ]]; then
   rm -f /etc/systemd/system/kode-nas-display.service
   rm -f /home/kode/kode_nas_display.py /home/kode/restart-display.sh /tmp/oled.log
 
+  log "Removing kode-os CLI symlink…"
+  rm -f /usr/local/bin/kode-os
+
   log "Removing KODE UI overlay from /var/lib/casaos/www…"
   rm -rf /var/lib/casaos/www
 
@@ -381,7 +384,17 @@ if [[ $INSTALL_OLED -eq 1 ]]; then
   systemctl enable --now kode-nas-display.service
 fi
 
-# 7. Done — print access info. KODE OS banner (NOT CasaOS's) is the
+# 7. kode-os CLI — symlink the dispatcher into /usr/local/bin so users
+# get `kode-os update`, `kode-os uninstall`, `kode-os version` from
+# anywhere. The dispatcher follows the symlink with readlink -f to
+# find the repo it was installed from, so we don't have to bake the
+# path in.
+if [[ -x "$KODE_ROOT/scripts/kode-os" ]]; then
+  ln -sf "$KODE_ROOT/scripts/kode-os" /usr/local/bin/kode-os
+  log "kode-os CLI installed → /usr/local/bin/kode-os (try: kode-os update)"
+fi
+
+# 8. Done — print access info. KODE OS banner (NOT CasaOS's) is the
 # last thing on screen so the buyer's first impression is ours.
 HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 cat <<EOF
@@ -397,8 +410,9 @@ cat <<EOF
   About five minutes from box-open to working.
 ────────────────────────────────────────────────────────────
 
+  Update:            sudo kode-os update
   HTTPS (optional):  sudo ${KODE_ROOT}/scripts/setup-pebble-https.sh
-  Uninstall:         sudo ${KODE_ROOT}/scripts/install.sh --uninstall
+  Uninstall:         sudo kode-os uninstall      (--purge / --wipe-data for deeper)
   Upstream log:      ${CASAOS_LOG}
 
   Made by KODE NAS · pebble v1
