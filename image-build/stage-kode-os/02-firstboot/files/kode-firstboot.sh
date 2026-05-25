@@ -30,6 +30,12 @@ exec >>"$LOG" 2>&1
 KODE_ROOT="/opt/kode-os"
 TOKEN_FILE="${KODE_ROOT}/.wizard-token"
 URL_FILE="${KODE_ROOT}/.wizard-url"
+# Web-accessible copy of the token. The kode-os-ui router's
+# wizard-token guard fetches /.wizard-token to validate the URL.
+# Mode 0644 because casaos-gateway serves it as a regular static
+# file. (See router/index.js wizardTokenMatches() for the threat
+# model + why fileToken being LAN-fetchable is acceptable here.)
+WEB_TOKEN_FILE="/var/lib/casaos/www/.wizard-token"
 PENDING_MARKER="${KODE_ROOT}/.firstboot-pending"
 OLED_SIGNAL="/tmp/kode-oled-firstboot"
 
@@ -67,7 +73,12 @@ umask 077
 printf '%s\n' "$TOKEN" > "$TOKEN_FILE"
 chmod 600 "$TOKEN_FILE"
 chown root:root "$TOKEN_FILE"
-log "Wizard token generated (32 hex chars, mode 0600)"
+# Web-accessible copy for the UI router to fetch + compare.
+umask 022
+mkdir -p "$(dirname "$WEB_TOKEN_FILE")"
+printf '%s\n' "$TOKEN" > "$WEB_TOKEN_FILE"
+chmod 644 "$WEB_TOKEN_FILE"
+log "Wizard token generated (32 hex chars; 0600 at $TOKEN_FILE, 0644 at $WEB_TOKEN_FILE)"
 
 # ----- 4. Wizard URL display -----------------------------------
 # Compose the URL the user should visit. Prefer hostname.local for
