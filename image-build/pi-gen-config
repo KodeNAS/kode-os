@@ -44,8 +44,15 @@ TIMEZONE_DEFAULT="UTC"
 FIRST_USER_NAME="kode"
 FIRST_USER_PASS="${KODE_FIRST_USER_PASS:-PLACEHOLDER_BUILD_SH_MUST_EXPORT_THIS}"
 DISABLE_FIRST_BOOT_USER_RENAME=1
-ENABLE_SSH=0
-PUBKEY_ONLY_SSH=0
+
+# SSH defaults OFF (released-image security model). build.sh's
+# --debug-ssh flag flips KODE_ENABLE_SSH=1 and exports the host's
+# pubkey via KODE_SSH_PUBKEY so the maintainer can ssh kode@... for
+# debugging. The kode account stays passwd -l locked either way;
+# only pubkey auth ever works.
+ENABLE_SSH="${KODE_ENABLE_SSH:-0}"
+PUBKEY_ONLY_SSH=1
+PUBKEY_SSH_FIRST_USER="${KODE_SSH_PUBKEY:-}"
 
 APT_PROXY=""
 SETFCAP=1

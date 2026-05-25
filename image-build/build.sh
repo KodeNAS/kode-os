@@ -37,9 +37,13 @@ PI_GEN_TAG="${PI_GEN_TAG:-2025-11-24-raspios-bookworm-arm64}"
 
 # Parse flags.
 WITH_APPS=0
+DEBUG_SSH=0
+SSH_KEY_PATH="${HOME}/.ssh/id_ed25519.pub"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --with-apps) WITH_APPS=1; shift ;;
+    --debug-ssh) DEBUG_SSH=1; shift ;;
+    --ssh-key)   SSH_KEY_PATH="$2"; shift 2 ;;
     -h|--help)
       sed -n '2,/^$/p' "$0" | sed 's/^#\!.*//;s/^# \{0,1\}//'
       exit 0 ;;
@@ -61,6 +65,22 @@ fi
 # `passwd -l kode` to lock the account. The pass never touches disk
 # in cleartext and dies with this process.
 export KODE_FIRST_USER_PASS="$(openssl rand -hex 32)"
+
+# --debug-ssh: enable sshd + bake the maintainer's pubkey so we can
+# `ssh kode@pebble.local` to debug a broken first-boot. Account
+# stays passwd -l locked → pubkey auth is the only path in. Default
+# (no flag) ships SSH off + no key, matching the release-image
+# security model.
+if (( DEBUG_SSH )); then
+  if [[ ! -f "$SSH_KEY_PATH" ]]; then
+    echo "--debug-ssh needs a pubkey at $SSH_KEY_PATH (override with --ssh-key PATH)" >&2
+    exit 1
+  fi
+  export KODE_ENABLE_SSH=1
+  export KODE_SSH_PUBKEY="$(cat "$SSH_KEY_PATH")"
+  export KODE_IMG_NAME="${KODE_IMG_NAME}-debug"
+  echo "==> --debug-ssh: SSH enabled, baking pubkey from $SSH_KEY_PATH"
+fi
 
 log() { echo "==> $*"; }
 
