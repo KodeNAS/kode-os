@@ -46,7 +46,13 @@ fi
 # 2. OLED daemon. The user account `kode` already exists from
 # pi-gen's FIRST_USER_NAME; we just need to add it to the spi/gpio
 # groups so the daemon can open /dev/spidev0.0 + /dev/gpiochip0.
+# We ALSO lock the account immediately — pi-gen needed a non-empty
+# FIRST_USER_PASS to pass its safety check, but we don't want any
+# usable login until the wizard creates the real admin. SSH is also
+# disabled (ENABLE_SSH=0 in pi-gen-config) so this is belt + braces.
 if id kode >/dev/null 2>&1; then
+  log "Locking kode account (no login until wizard creates the real admin)"
+  passwd -l kode >/dev/null
   log "Adding kode user to gpio + spi groups"
   usermod -aG spi,gpio kode 2>/dev/null || true
 fi

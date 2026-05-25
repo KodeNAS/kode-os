@@ -55,6 +55,13 @@ else
   export KODE_BUNDLE_APPS=0
 fi
 
+# Pi-gen demands a non-empty FIRST_USER_PASS unless you also enable
+# the first-boot user-rename prompt — both of which we don't want.
+# Generate a fresh random pass per build; install-in-chroot.sh then
+# `passwd -l kode` to lock the account. The pass never touches disk
+# in cleartext and dies with this process.
+export KODE_FIRST_USER_PASS="$(openssl rand -hex 32)"
+
 log() { echo "==> $*"; }
 
 # Refuse to run as root — pi-gen's own build-docker.sh will sudo
