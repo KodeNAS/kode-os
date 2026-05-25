@@ -35,7 +35,7 @@ all: $(TARGET)
 
 $(TARGET): $(SRC) $(HDR)
 	$(CC) $(CFLAGS) -o $@ $(SRC)
-	@size $@
+	@command -v size >/dev/null 2>&1 && size $@ || true
 
 $(HDR): gen-bitmap.py
 	python3 gen-bitmap.py $@
