@@ -7,10 +7,13 @@
 # (Phase 3) — they need a running Docker daemon to set up the API
 # override, which we can't do in chroot.
 #
-# Variables provided by pi-gen:
+# Variables provided by pi-gen at runtime:
 #   ROOTFS_DIR — the staging rootfs we're baking
-#   BASE_DIR   — this stage's directory (image-build/stage-kode-os)
-#   STAGE_DIR  — same as BASE_DIR in stage scripts
+#   STAGE_DIR  — the parent stage dir (.../stage-kode-os)
+#   PWD        — pi-gen pushd's into the sub-stage dir before
+#                running this script, so plain `files/...` paths
+#                resolve correctly (BASE_DIR is /pi-gen, NOT what
+#                you'd expect — burned us once).
 #
 # Variables provided by build.sh (exported in config):
 #   KODE_BUNDLE_APPS — 1 if we should pre-pull Docker images,
@@ -18,7 +21,7 @@
 
 # Source — staged by build.sh under
 # files/kode-os-source/ before pi-gen runs.
-KODE_SRC="${BASE_DIR}/files/kode-os-source"
+KODE_SRC="files/kode-os-source"
 KODE_DST="/opt/kode-os"
 
 if [[ ! -d "${KODE_SRC}" ]]; then
@@ -39,7 +42,7 @@ rsync -a --delete \
 # host to avoid the ~30 min qemu-user emulation cost). If it's missing,
 # bail loudly — running the chroot pnpm build as a fallback would
 # silently 10× the build time.
-UI_PREBUILT="${BASE_DIR}/files/ui-prebuilt"
+UI_PREBUILT="files/ui-prebuilt"
 if [[ ! -d "${UI_PREBUILT}/var/lib/casaos/www" ]]; then
   echo "01-install-kode-os: pre-built UI missing at ${UI_PREBUILT}" >&2
   echo "  build.sh should have built kode-os-ui natively + staged it here." >&2
@@ -51,7 +54,7 @@ install -d -m 755 "${ROOTFS_DIR}/var/lib/casaos/www"
 rsync -a "${UI_PREBUILT}/var/lib/casaos/www/" "${ROOTFS_DIR}/var/lib/casaos/www/"
 
 # Stage the chroot install script and run it inside the chroot.
-install -m 755 "${BASE_DIR}/01-install-kode-os/files/install-in-chroot.sh" \
+install -m 755 "files/install-in-chroot.sh" \
   "${ROOTFS_DIR}/tmp/install-in-chroot.sh"
 
 on_chroot << 'EOF'
