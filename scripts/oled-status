@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#
+# oled-status — write the three-line OLED status card.
+#
+# Usage:
+#   oled-status                                  # clear status (back to normal rotation)
+#   oled-status "TITLE"                          # title only
+#   oled-status "TITLE" "Subtitle"               # + subtitle
+#   oled-status "TITLE" "Subtitle" "footer hint" # all three lines
+#
+# The status file at /run/kode-os/oled-status is read by the OLED
+# daemon on every render tick — present → status card overrides
+# normal rotation; absent → daemon returns to its hostname/storage
+# /CPU/memory cycle.
+#
+# Writes are atomic (tmpfile + mv) so the daemon never observes a
+# half-written file. Safe to call from anywhere in firstboot.sh /
+# install.sh that needs to surface a step boundary on the OLED.
+
+set -euo pipefail
+
+STATUS_FILE="/run/kode-os/oled-status"
+
+# Clear mode — no args means remove the file.
+if [[ $# -eq 0 ]]; then
+  rm -f "$STATUS_FILE"
+  exit 0
+fi
+
+mkdir -p "$(dirname "$STATUS_FILE")"
+tmpf="$(mktemp "${STATUS_FILE}.XXXXXX")"
+chmod 0644 "$tmpf"
+{
+  printf '%s\n' "${1:-}"
+  printf '%s\n' "${2:-}"
+  printf '%s\n' "${3:-}"
+} > "$tmpf"
+mv "$tmpf" "$STATUS_FILE"

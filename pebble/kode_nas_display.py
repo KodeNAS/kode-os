@@ -164,6 +164,30 @@ def decode_logo():
     return img
 
 
+# ----- Status file (first-boot + wizard URL display) ------------------
+# The status file is a tiny text file at /run/kode-os/oled-status.
+# Format: up to three lines (title, subtitle, footer). Empty lines or
+# missing lines are simply omitted on render. The file lives in /run
+# (tmpfs) so it's wiped at reboot and never accumulates stale state.
+# Helper: scripts/oled-status (or kode-os-status) writes it atomically.
+_STATUS_FILE = "/run/kode-os/oled-status"
+
+def _read_status_file():
+    """Return dict {title,subtitle,footer} or None if no status set."""
+    try:
+        with open(_STATUS_FILE, "r") as f:
+            lines = f.read().splitlines()
+    except (FileNotFoundError, PermissionError, OSError):
+        return None
+    if not lines:
+        return None
+    return {
+        "title":    lines[0].strip() if len(lines) > 0 else "",
+        "subtitle": lines[1].strip() if len(lines) > 1 else "",
+        "footer":   lines[2].strip() if len(lines) > 2 else "",
+    }
+
+
 # ============================================================================
 # FONTS
 # ============================================================================
@@ -353,6 +377,16 @@ class NASDisplay:
     def render(self):
         img  = Image.new("L", (256, 64), 0)
         draw = ImageDraw.Draw(img)
+        # Status override — first-boot setup + wizard URL display land
+        # here. The status file is set by `kode-os-status` (helper) or
+        # written directly by first-boot.sh / install.sh during setup.
+        # While the file exists everything else (LOADING / SPLASH /
+        # NORMAL rotation) is suppressed.
+        status = _read_status_file()
+        if status is not None:
+            self._draw_status(draw, status)
+            self.oled.display(img)
+            return
         if self.state == "LOADING":
             self._draw_loading(draw, img)
         elif self.state == "SPLASH":
@@ -363,6 +397,29 @@ class NASDisplay:
             screens[self.current_screen](draw)
             self._draw_footer(draw)
         self.oled.display(img)
+
+    def _draw_status(self, draw, status):
+        """Three-line status card. Used during first-boot setup + wizard
+        URL display. Status dict keys: title, subtitle, footer (any
+        absent → omitted)."""
+        title    = status.get("title",    "")
+        subtitle = status.get("subtitle", "")
+        footer   = status.get("footer",   "")
+        # Centred title at the top. Use FONT_BIG (14pt bold) so even
+        # longer titles like "INSTALLING" fit at 256px wide.
+        if title:
+            tw = text_w(draw, title, FONT_BIG)
+            draw.text(((256 - tw) // 2, 4), title, fill=255, font=FONT_BIG)
+        # Subtitle — main message. Larger font, centred.
+        if subtitle:
+            sw = text_w(draw, subtitle, FONT_NUM_S)
+            x = max(0, (256 - sw) // 2)
+            draw.text((x, 22), subtitle, fill=255, font=FONT_NUM_S)
+        # Footer — small hint text at the bottom, dim.
+        if footer:
+            fw = text_w(draw, footer, FONT_TINY)
+            x = max(0, (256 - fw) // 2)
+            draw.text((x, 50), footer, fill=160, font=FONT_TINY)
 
     def _draw_loading(self, draw, img):
         img.paste(self.logo, (12, 8))

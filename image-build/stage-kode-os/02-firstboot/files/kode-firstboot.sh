@@ -42,7 +42,16 @@ OLED_SIGNAL="/tmp/kode-oled-firstboot"
 ts() { date -u +'%Y-%m-%dT%H:%M:%SZ'; }
 log() { echo "[$(ts)] kode-firstboot: $*"; }
 
+# oled() — surface a step on the OLED status card. Three positional
+# args (title, subtitle, footer); all optional. Errors are swallowed
+# because the OLED is hardware-dependent and a missing display
+# should never block first-boot.
+oled() {
+  "${KODE_ROOT}/scripts/oled-status" "$@" 2>/dev/null || true
+}
+
 log "Starting first-boot setup"
+oled "SETTING UP" "Just a moment" "first power-on"
 
 # ----- 1. Filesystem expansion ----------------------------------
 # raspi-config nonint do_expand_rootfs schedules the resize on next
@@ -50,6 +59,7 @@ log "Starting first-boot setup"
 # reboot here because that'd interrupt the rest of the firstboot
 # sequence. Pi OS handles the actual resize during the next boot.
 log "Expanding root filesystem"
+oled "SETTING UP" "Expanding storage" "step 1 of 3"
 if command -v raspi-config >/dev/null 2>&1; then
   raspi-config nonint do_expand_rootfs || log "expand_rootfs returned non-zero (continuing)"
 else
@@ -62,8 +72,10 @@ fi
 # "already installed" bits and skips them; the only real work here
 # should be the upstream CasaOS install.
 log "Running install.sh to bootstrap CasaOS"
+oled "SETTING UP" "Installing CasaOS" "step 2 of 3 (~2 min)"
 if ! "${KODE_ROOT}/scripts/install.sh"; then
   log "install.sh failed — leaving .firstboot-pending so we retry on next boot"
+  oled "SETUP FAILED" "Check the network" "will retry on reboot"
   exit 1
 fi
 
@@ -127,7 +139,14 @@ chmod 644 "$OLED_SIGNAL"
 
 # ----- 5. Start OLED daemon ------------------------------------
 log "Starting OLED display daemon"
+oled "SETTING UP" "Almost done" "step 3 of 3"
 systemctl start kode-nas-display.service || log "OLED daemon start failed (no SH1122 wired up?)"
+
+# Switch OLED to the wizard-URL card. Stays on until the next reboot
+# OR until something clears /run/kode-os/oled-status. For v0.2.0-alpha
+# the user clears it manually once the wizard is done; v0.3.0 will
+# auto-clear when CasaOS reports initialized.
+oled "OPEN IN BROWSER" "${HOSTNAME}.local" "${WIZARD_PATH}"
 
 # ----- 6. Clear firstboot marker --------------------------------
 rm -f "$PENDING_MARKER"
