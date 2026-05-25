@@ -2,7 +2,7 @@
 
 > Your own private cloud, in a box the size of a paperback.
 
-**KODE OS** is the operating system that ships on the [KODE NAS pebble](https://kode-nas.com) — a small, beginner-friendly home NAS appliance built around a Raspberry Pi 5. It turns the Pi into a private cloud for your photos, files, and media, without the Synology price tag or the DIY Pi-build complexity.
+**KODE OS** is the operating system that ships on the [KODE NAS pebble](https://kodenas.dev) — a small, beginner-friendly home NAS appliance built around a Raspberry Pi 5. It turns the Pi into a private cloud for your photos, files, and media, without the Synology price tag or the DIY Pi-build complexity.
 
 > ⚠️ **alpha** — this release is for early adopters and developers. APIs, defaults, and the install path will change. Don't run it on hardware you can't reflash.
 
@@ -40,7 +40,7 @@ The pebble v1 also ships with a custom case + power button + USB-C PSU — those
 ### One-line install *(coming soon)*
 
 ```bash
-curl -fsSL https://kode-nas.com/install.sh | sudo bash
+curl -fsSL https://kodenas.dev/install.sh | sudo bash
 ```
 
 > The hosted installer URL above will go live with the first public alpha. Until then, use the local installer:
@@ -125,7 +125,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and pull requests welcome — ple
 ## Status, roadmap, support
 
 - **Status:** alpha, internal testing
-- **First public release target:** TBD
 - **Issues:** https://github.com/KodeNAS/kode-os/issues
 - **Security:** see [SECURITY.md](SECURITY.md)
-- **Commercial support / pebble hardware:** https://kode-nas.com
+- **Commercial support / pebble hardware:** https://kodenas.dev
