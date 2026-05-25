@@ -12,10 +12,13 @@ Group=kode
 # spidev0.0). Listed here in addition to usermod -aG so the unit works
 # even when group state hasn't been re-read for the kode user yet.
 SupplementaryGroups=gpio spi
-# Force the lgpio backend. The Pi 5's RP1 chip isn't supported by
-# gpiozero's legacy pin factories; without this gpiozero falls through
-# the auto-detect chain and dies with BadPinFactory at startup.
-Environment=GPIOZERO_PIN_FACTORY=lgpio
+# Force the rpigpio backend. On a Pi 5 + Bookworm install, RPi.GPIO is
+# actually python3-rpi-lgpio (a chardev-only shim) — it talks to
+# /dev/gpiochip0 directly and doesn't need an lgd daemon. The plain
+# `lgpio` factory looks like the obvious pick but the python3-lgpio
+# package on Bookworm dies at import time trying to open an lgd
+# notification FIFO that doesn't exist (no lgd daemon is shipped).
+Environment=GPIOZERO_PIN_FACTORY=rpigpio
 ExecStart=/usr/bin/python3 /home/kode/kode_nas_display.py
 Restart=on-failure
 RestartSec=5

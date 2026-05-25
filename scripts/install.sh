@@ -407,11 +407,14 @@ if [[ $INSTALL_OLED -eq 1 ]]; then
     warn "User 'kode' not found — creating one for the OLED daemon."
     useradd -m -s /bin/bash kode
   fi
-  # Python deps for the daemon. python3-lgpio is critical on Pi 5 — the
-  # RP1 chip doesn't work with gpiozero's legacy RPi.GPIO / RPIO / pigpio
-  # backends, and without it the daemon dies with BadPinFactory at the
-  # first DigitalOutputDevice() call.
-  apt-get install -y -qq python3-pip python3-pil python3-psutil python3-spidev python3-gpiozero python3-lgpio
+  # Python deps for the daemon. python3-rpi-lgpio is critical on Pi 5 —
+  # it's a chardev-only RPi.GPIO shim that talks directly to /dev/gpiochip0
+  # without needing an lgd daemon (which isn't packaged on Pi OS Bookworm).
+  # The plain python3-lgpio package would seem like the obvious pick, but
+  # its 0.2.2 Python bindings unconditionally try to open a notification
+  # FIFO created by the lgd daemon at import time and die with
+  # FileNotFoundError before gpiozero ever sees the factory.
+  apt-get install -y -qq python3-pip python3-pil python3-psutil python3-spidev python3-gpiozero python3-rpi-lgpio
   # Grant the daemon user access to the SPI bus + GPIO chip. Pi OS Lite
   # ships these as 'spi' / 'gpio' group-owned 660 devices, so without
   # group membership opening them fails with EACCES.
