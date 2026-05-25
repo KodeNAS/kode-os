@@ -308,7 +308,14 @@ fi
 # its output to $CASAOS_LOG so the screen stays clean. The KODE OS
 # success banner at the end is what the user sees instead.
 if [[ $SKIP_CASAOS -eq 0 ]]; then
-  if ! systemctl list-unit-files | grep -q casaos-gateway; then
+  # Probe by binary, not by `systemctl list-unit-files | grep -q`. The
+  # grep version is a real foot-gun under `set -o pipefail`: `grep -q`
+  # exits at the first match, SIGPIPEs systemctl mid-write, the pipeline
+  # exit status becomes systemctl's death code, `!` flips that to truthy,
+  # and the "install CasaOS" branch runs against an already-installed
+  # CasaOS — which then re-downloads the upstream tarballs (and fails on
+  # any flaky network blip). Binary existence is the reliable signal.
+  if ! command -v casaos-gateway >/dev/null 2>&1; then
     log "Installing OS runtime (this is the upstream CasaOS layer KODE OS rides on — takes ~2 min)…"
     log "  Full log: $CASAOS_LOG"
     if curl -fsSL "$CASAOS_INSTALL_URL" | bash >"$CASAOS_LOG" 2>&1; then
