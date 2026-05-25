@@ -111,6 +111,27 @@ rsync -a \
   "$REPO_ROOT/" \
   "$WORK_DIR/stage-kode-os/01-install-kode-os/files/kode-os-source/"
 
+log "Pre-building kode-os-ui natively (saves ~30 min vs qemu-user emulation)"
+# We build the UI on the build host instead of inside the chroot
+# because Vue 2 + Vue CLI under qemu-user takes 30–45 min while a
+# native build is ~80s. The chroot stage just rsyncs the resulting
+# build/sysroot/var/lib/casaos/www/ into the rootfs.
+UI_BUILD_DIR="$(mktemp -d -t kode-os-ui-build-XXXXXX)"
+trap 'rm -rf "$UI_BUILD_DIR"' EXIT
+git clone --depth 1 https://github.com/KodeNAS/kode-os-ui.git "$UI_BUILD_DIR/kode-os-ui"
+(
+  cd "$UI_BUILD_DIR/kode-os-ui"
+  command -v pnpm >/dev/null 2>&1 || npm install -g pnpm
+  pnpm install --frozen-lockfile
+  pnpm build
+)
+UI_STAGE="$WORK_DIR/stage-kode-os/01-install-kode-os/files/ui-prebuilt"
+mkdir -p "$UI_STAGE/var/lib/casaos/www"
+rsync -a "$UI_BUILD_DIR/kode-os-ui/build/sysroot/var/lib/casaos/www/" \
+  "$UI_STAGE/var/lib/casaos/www/"
+rm -rf "$UI_BUILD_DIR"
+trap - EXIT
+
 log "Copying pi-gen config"
 cp "$SCRIPT_DIR/pi-gen-config" "$WORK_DIR/config"
 
