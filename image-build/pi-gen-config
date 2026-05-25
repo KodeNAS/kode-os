@@ -1,0 +1,47 @@
+# pi-gen config for the KODE OS v0.2.0-alpha bootable image (Pi 5).
+#
+# pi-gen sources this file as bash. Anything build.sh exports before
+# invoking pi-gen lands here; the ${KODE_*:-default} pattern lets the
+# slim + bundled-apps build variants share one config file.
+#
+# Reference: https://github.com/RPi-Distro/pi-gen/blob/master/README.md
+
+# Artifact name — build.sh sets KODE_IMG_NAME to either
+# `kode-os-v0.2.0-alpha-pi5` (slim, the default) or
+# `kode-os-v0.2.0-alpha-pi5-with-apps` (bundled).
+IMG_NAME="${KODE_IMG_NAME:-kode-os-v0.2.0-alpha-pi5}"
+
+# Pi 5 Bookworm 64-bit. Matches what install.sh has been tested
+# against and what the kode-os-ui + casaos-gateway expect.
+RELEASE="bookworm"
+ARCH="arm64"
+ARCHIVE_ROOT="https://archive.raspberrypi.com/debian/"
+
+# Hostname matches what every doc + the OLED daemon assume. Buyers
+# can rename in the wizard later; this is just the boot default.
+TARGET_HOSTNAME="pebble"
+
+LOCALE_DEFAULT="en_US.UTF-8"
+KEYBOARD_KEYMAP="us"
+KEYBOARD_LAYOUT="English (US)"
+TIMEZONE_DEFAULT="UTC"
+
+# The first user exists for systemd group ownership (OLED daemon
+# runs as `kode`), NOT for login. ENABLE_SSH=0 + empty password
+# means there's no usable account until the wizard creates one.
+# Hard requirement from bootableos.md security section — we MUST
+# NOT ship default credentials.
+FIRST_USER_NAME="kode"
+FIRST_USER_PASS=""
+DISABLE_FIRST_BOOT_USER_RENAME=1
+ENABLE_SSH=0
+PUBKEY_ONLY_SSH=0
+
+APT_PROXY=""
+SETFCAP=1
+PI_GEN_RELEASE="KODE OS v0.2.0-alpha (pi5)"
+
+# Output as .img.xz at max compression. Adds a few minutes to the
+# build but shaves hundreds of MB off the artifact buyers download.
+DEPLOY_COMPRESSION="xz"
+COMPRESSION_LEVEL=9

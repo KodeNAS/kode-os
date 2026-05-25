@@ -34,8 +34,13 @@ kode-os-ui/
 # Bash scratch
 *.log
 
+# pi-gen build output — each build.sh run clones pi-gen + writes
+# several GB of stage artifacts here. Never commit any of it.
+image-build/pi-gen-work/
+
 # Personal-only files (you said you'd delete these later — keeping them
 # out of git so an accidental `git add -A` doesn't pull them in)
 _assets-reference/
 DESIGN.md
 fix.md
+bootableos.md
