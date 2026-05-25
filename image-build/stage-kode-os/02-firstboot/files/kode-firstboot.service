@@ -1,0 +1,29 @@
+[Unit]
+Description=KODE OS first-boot setup (expand fs, install CasaOS, mint wizard token)
+Documentation=https://github.com/KodeNAS/kode-os
+# Run after network is online so the CasaOS install can pull
+# upstream tarballs + Docker images. Without network the run
+# fails cleanly and the next boot retries (the gating
+# .firstboot-pending file is only removed on success).
+After=network-online.target docker.service
+Wants=network-online.target
+# Skip ourselves if the marker file isn't present. install.sh sets
+# it during the chroot bake; kode-firstboot.sh removes it on success.
+# Combined with WantedBy=multi-user.target this gives idempotent
+# "run once, retry on reboot if it failed" semantics.
+ConditionPathExists=/opt/kode-os/.firstboot-pending
+
+[Service]
+Type=oneshot
+ExecStart=/opt/kode-os/scripts/kode-firstboot.sh
+RemainAfterExit=yes
+# Log to journal (default) AND to a file for post-mortem if the
+# wizard never appears + the user has to SSH in (after they
+# manually enable SSH).
+StandardOutput=journal+console
+StandardError=journal+console
+# Don't reboot a failed firstboot loop — let the user investigate.
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
