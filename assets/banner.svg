@@ -1,37 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#34705B"/>
-      <stop offset="100%" stop-color="#234A3D"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0%"  stop-color="#3C7B66"/>
+      <stop offset="55%" stop-color="#2A5A4A"/>
+      <stop offset="100%" stop-color="#1B3D33"/>
     </linearGradient>
-    <radialGradient id="glow" cx="0.25" cy="0.4" r="0.6">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+    <radialGradient id="glow" cx="0.3" cy="0.25" r="0.7">
+      <stop offset="0%"  stop-color="#FFFFFF" stop-opacity="0.10"/>
+      <stop offset="60%" stop-color="#FFFFFF" stop-opacity="0.02"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </radialGradient>
+    <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.75">
+      <stop offset="60%"  stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.35"/>
+    </radialGradient>
+    <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="1" fill="#FFFFFF" opacity="0.055"/>
+    </pattern>
     <linearGradient id="rule" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
-      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="50%"  stop-color="#FFFFFF" stop-opacity="0.4"/>
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
     </linearGradient>
   </defs>
 
   <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect width="1280" height="640" fill="url(#dots)"/>
   <rect width="1280" height="640" fill="url(#glow)"/>
+  <rect width="1280" height="640" fill="url(#vignette)"/>
 
-  <g transform="translate(160 200)" fill="#FFFFFF">
-    <g transform="scale(4.2)">
+  <g transform="translate(560 90)" fill="#FFFFFF">
+    <g transform="scale(4)">
       <path d="M 4 4 H 12 V 17 L 26 4 H 38 L 21 20 L 38 36 H 26 L 12 23 V 36 H 4 Z"/>
     </g>
   </g>
 
-  <g font-family="'IBM Plex Sans', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif" fill="#FFFFFF">
-    <text x="360" y="290" font-size="124" font-weight="700" letter-spacing="-2">KODE OS</text>
-    <text x="362" y="360" font-size="34" font-weight="400" opacity="0.85" letter-spacing="0.3">Your own private cloud, in a box the size of a paperback.</text>
+  <g font-family="'IBM Plex Sans', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif"
+     fill="#FFFFFF"
+     text-anchor="middle">
+    <text x="640" y="378" font-size="132" font-weight="700" letter-spacing="-3">KODE OS</text>
+    <text x="640" y="448" font-size="36" font-weight="300" opacity="0.88" letter-spacing="0.4">Your own private cloud in 5 minutes.</text>
   </g>
 
-  <line x1="362" y1="402" x2="700" y2="402" stroke="url(#rule)" stroke-width="2"/>
+  <line x1="500" y1="495" x2="780" y2="495" stroke="url(#rule)" stroke-width="1.5"/>
 
-  <g font-family="'IBM Plex Sans', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif" fill="#FFFFFF" opacity="0.6">
-    <text x="362" y="448" font-size="20" font-weight="500" letter-spacing="3">ALPHA  ·  KODE NAS  ·  PEBBLE v1</text>
+  <g font-family="'IBM Plex Sans', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif"
+     fill="#FFFFFF"
+     opacity="0.55"
+     text-anchor="middle">
+    <text x="640" y="536" font-size="18" font-weight="500" letter-spacing="6">ALPHA  ·  KODE NAS  ·  PEBBLE v1</text>
   </g>
 </svg>
