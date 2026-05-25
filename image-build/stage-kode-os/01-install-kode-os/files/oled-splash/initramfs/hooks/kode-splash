@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# initramfs-tools hook for kode-splash.
+#
+# Runs at `update-initramfs` time. Tells initramfs-tools to bake our
+# static splash binary + the SPI modules into the initrd image, so
+# both are available when the kernel hands off and our init-premount
+# script fires.
+#
+# This file lives at /etc/initramfs-tools/hooks/kode-splash on the
+# target image (install-in-chroot.sh puts it there).
+
+set -e
+
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case "$1" in
+  prereqs) prereqs; exit 0 ;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+# Copy the splash binary into the initrd.
+# `copy_exec` resolves shared-lib deps automatically — our binary
+# is statically linked so it brings no extras with it.
+copy_exec /usr/local/bin/kode-splash /usr/local/bin/kode-splash
+
+# The Pi 5 GPIO-header SPI controller is still served by the
+# bcm2835 driver (despite the new RP1 chip — only some lines moved
+# off bcm2835). spidev is the userspace char-device front end.
+manual_add_modules spi-bcm2835
+manual_add_modules spidev

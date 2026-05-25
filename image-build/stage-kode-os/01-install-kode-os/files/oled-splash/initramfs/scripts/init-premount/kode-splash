@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# initramfs init-premount script for kode-splash.
+#
+# Fires after kernel hands off + modules load but before the root
+# filesystem is mounted. With our hook above the spi-bcm2835 +
+# spidev modules are in the initrd and the kernel auto-loads them
+# via modalias triggers; /dev/spidev0.0 typically appears within
+# ~50ms of the SPI controller being probed.
+#
+# We wait up to 1s for the device node (devtmpfs creates it on
+# module load — should be there) then fire the splash binary. Any
+# failure is swallowed: a missing OLED, miswired hardware, or the
+# binary being absent should never block boot.
+#
+# Installs to /etc/initramfs-tools/scripts/init-premount/kode-splash
+# on the target image.
+
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case "$1" in
+  prereqs) prereqs; exit 0 ;;
+esac
+
+# Wait briefly for /dev/spidev0.0. Loop on 50ms intervals; bail
+# after 20 tries (= 1s) so a missing OLED can't stall boot.
+i=0
+while [ $i -lt 20 ] && [ ! -c /dev/spidev0.0 ]; do
+  sleep 0.05
+  i=$((i + 1))
+done
+
+if [ -c /dev/spidev0.0 ] && [ -x /usr/local/bin/kode-splash ]; then
+  /usr/local/bin/kode-splash 2>/dev/null || true
+fi

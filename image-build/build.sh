@@ -133,6 +133,28 @@ rsync -a \
   "$REPO_ROOT/" \
   "$WORK_DIR/stage-kode-os/01-install-kode-os/files/kode-os-source/"
 
+log "Cross-compiling OLED splash binary for arm64 (Docker-based, no host toolchain needed)"
+# We avoid requiring gcc-aarch64-linux-gnu on the host by running
+# the compile inside a Debian container. Net cost: ~30s for the
+# first run (apt installs gcc + python3-pil + fonts in the
+# container), then Docker layer cache makes subsequent builds
+# near-instant. Produces splash.arm64 + splash_bitmap.h in-tree;
+# install-in-chroot.sh picks them up from /opt/kode-os.
+SPLASH_DIR="$WORK_DIR/stage-kode-os/01-install-kode-os/files/oled-splash"
+docker run --rm \
+  -v "$SPLASH_DIR":/src \
+  -w /src \
+  debian:bookworm bash -c '
+    set -e
+    apt-get update -qq >/dev/null
+    apt-get install -y -qq --no-install-recommends \
+      gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
+      python3-pil fonts-dejavu-core make file >/dev/null
+    make clean >/dev/null
+    make
+    file splash.arm64
+  '
+
 log "Pre-building kode-os-ui natively (saves ~30 min vs qemu-user emulation)"
 # We build the UI on the build host instead of inside the chroot
 # because Vue 2 + Vue CLI under qemu-user takes 30–45 min while a

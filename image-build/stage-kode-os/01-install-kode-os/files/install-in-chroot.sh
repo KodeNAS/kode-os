@@ -82,7 +82,47 @@ for dir in Photos Movies Shows Videos Documents Music Downloads Backups; do
   install -d -m 0775 -o root -g users "/DATA/${dir}"
 done
 
-# 5. Mark firstboot pending so the kode-firstboot.service (installed
+# 5. OLED initramfs splash. build.sh has already cross-compiled
+# splash.arm64 alongside the source. We:
+#   a) install the binary as /usr/local/bin/kode-splash
+#   b) drop the initramfs hook + init-premount script in place
+#   c) ensure auto_initramfs=1 in config.txt so the firmware loader
+#      actually loads the initrd we'll build (Pi OS Lite has it on
+#      by default in recent builds; belt + braces here)
+#   d) regenerate the initrd via update-initramfs -u so the splash
+#      binary + spi-bcm2835/spidev modules get baked in
+#
+# If splash.arm64 is missing (e.g. someone ran ./build.sh on a
+# machine without Docker), skip the OLED splash silently — the rest
+# of the image is still useful, you just won't see the ~2s OLED
+# boot splash.
+SPLASH_SRC="${KODE_ROOT}/image-build/stage-kode-os/01-install-kode-os/files/oled-splash"
+if [[ -x "${SPLASH_SRC}/splash.arm64" ]]; then
+  log "Installing OLED initramfs splash"
+  install -m 0755 "${SPLASH_SRC}/splash.arm64" /usr/local/bin/kode-splash
+  install -m 0755 "${SPLASH_SRC}/initramfs/hooks/kode-splash" \
+    /etc/initramfs-tools/hooks/kode-splash
+  install -m 0755 "${SPLASH_SRC}/initramfs/scripts/init-premount/kode-splash" \
+    /etc/initramfs-tools/scripts/init-premount/kode-splash
+
+  # Make sure the firmware loader pulls our initrd. auto_initramfs=1
+  # tells it to look for initramfs7.img / initramfs_2712.img next to
+  # the kernel and load it. Pi OS Lite usually has this on; we add
+  # it if absent so the splash also fires on stripped-down images.
+  if [[ -n "$CONFIG_TXT" ]] && ! grep -qE '^[[:space:]]*auto_initramfs=1' "$CONFIG_TXT"; then
+    printf '\n# Enabled by KODE OS image build for the OLED boot splash.\nauto_initramfs=1\n' >> "$CONFIG_TXT"
+  fi
+
+  # Regenerate the initrd. update-initramfs -u rebuilds the cpio
+  # for every installed kernel; our hook + script + modules land
+  # inside on the next boot.
+  log "Regenerating initramfs (this can take a few seconds)"
+  update-initramfs -u
+else
+  log "splash.arm64 missing — skipping OLED boot splash. (Did build.sh's cross-compile step run?)"
+fi
+
+# 6. Mark firstboot pending so the kode-firstboot.service (installed
 # by 02-firstboot/02-run.sh) knows to run on next power-on. The
 # service removes this file when it finishes, so a reboot mid-setup
 # resumes correctly.
