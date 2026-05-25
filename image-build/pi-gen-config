@@ -55,3 +55,11 @@ PI_GEN_RELEASE="KODE OS v0.2.0-alpha (pi5)"
 # build but shaves hundreds of MB off the artifact buyers download.
 DEPLOY_COMPRESSION="xz"
 COMPRESSION_LEVEL=9
+
+# Force stage order. Pi-gen's auto-detect runs `stage*` directories
+# in lexicographic order, but `stage-kode-os` sorts BEFORE `stage0`
+# (the `-` byte is 0x2D, `0` is 0x30) — so our stage would fire
+# first with no base rootfs to layer on top of. STAGE_LIST overrides
+# that. We also drop the desktop stages here even though build.sh
+# touches SKIP files in them; STAGE_LIST makes the skip explicit.
+STAGE_LIST="stage0 stage1 stage2 stage-kode-os"
