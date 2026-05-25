@@ -8,6 +8,22 @@ once the project leaves alpha.
 
 ## [unreleased]
 
+### Added
+- `kode-os` device CLI: `sudo kode-os update` (git pull + re-run installer), `sudo kode-os uninstall` (forwards to `install.sh --uninstall` with `--purge` / `--wipe-data` flags), `kode-os version`. Symlinked into `/usr/local/bin/kode-os` by the installer; resolves its real location with `readlink -f` so it works through the symlink.
+- Tiered uninstall in `scripts/install.sh`: bare `--uninstall` removes the KODE layer + CasaOS runtime, `--purge` additionally removes KODE-installed Docker containers + images + the Docker API override + the kode user, `--wipe-data` additionally deletes `/DATA` (requires typing `WIPE` to confirm; `--yes` skips for automation).
+- Brand banner image (`assets/banner.png` + source SVG) at the top of the README. Tagline: "Your own private cloud in 5 minutes."
+- 8 GitHub topics + repo homepage on `KodeNAS/kode-os` for discoverability.
+
+### Changed
+- README domain references swapped from `kode-nas.com` → `kodenas.dev` (the actual owned domain).
+- Installer closing banner now points users at `sudo kode-os update` / `sudo kode-os uninstall` instead of bare script paths.
+- Installer bumped from Node 18 → Node 20 LTS (Node 18 reached EOL April 2025; NodeSource was printing a deprecation banner on every install).
+- Installer is quieter: upstream CasaOS install output redirected to `/tmp/kode-os-casaos-install.log` so the KODE banner is the first + last thing the buyer sees.
+
+### Fixed
+- `--uninstall` no longer hangs on `casaos-uninstall`'s interactive y/N prompt. Now pipes `yes y |` into the helper and caps the call with a 90-second `timeout`; falls back to manual teardown of casaos-* services + binaries + `/etc/casaos` + `/var/lib/casaos` + `/usr/share/casaos` if the helper still misbehaves.
+- Family-member data now survives switching URLs. Signing in as admin on a new origin (e.g. switching from `http://pebble.local` to the LAN IP, which the browser treats as a separate origin with empty localStorage) hydrates `kode_family_members` + `kode_user_roles` from server-side custom storage into the new origin's localStorage. Without this fix, family tiles were empty and the signup dupe-check would let someone re-claim an existing name on the new URL.
+
 ## [0.1.0-alpha] — 2026-05-24
 
 First publishable alpha. Forked from CasaOS 0.4.5.
