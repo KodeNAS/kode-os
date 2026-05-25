@@ -8,6 +8,14 @@ Wants=network-online.target
 Type=simple
 User=kode
 Group=kode
+# gpio + spi own the device nodes the daemon needs (gpiochip0, gpiomem0,
+# spidev0.0). Listed here in addition to usermod -aG so the unit works
+# even when group state hasn't been re-read for the kode user yet.
+SupplementaryGroups=gpio spi
+# Force the lgpio backend. The Pi 5's RP1 chip isn't supported by
+# gpiozero's legacy pin factories; without this gpiozero falls through
+# the auto-detect chain and dies with BadPinFactory at startup.
+Environment=GPIOZERO_PIN_FACTORY=lgpio
 ExecStart=/usr/bin/python3 /home/kode/kode_nas_display.py
 Restart=on-failure
 RestartSec=5
@@ -18,6 +26,9 @@ ProtectHome=read-only
 ReadWritePaths=/tmp
 DevicePolicy=closed
 DeviceAllow=/dev/spidev0.0 rw
+# Pi 5 RP1 GPIO chip + legacy /dev/gpiomem0 fallback for older lgpio.
+DeviceAllow=/dev/gpiochip0 rw
+DeviceAllow=/dev/gpiomem0 rw
 
 [Install]
 WantedBy=multi-user.target

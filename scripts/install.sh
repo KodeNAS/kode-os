@@ -400,13 +400,23 @@ if [[ $INSTALL_OLED -eq 1 ]]; then
     warn "User 'kode' not found — creating one for the OLED daemon."
     useradd -m -s /bin/bash kode
   fi
-  # Python deps for the daemon.
-  apt-get install -y -qq python3-pip python3-pil python3-psutil python3-spidev python3-gpiozero
+  # Python deps for the daemon. python3-lgpio is critical on Pi 5 — the
+  # RP1 chip doesn't work with gpiozero's legacy RPi.GPIO / RPIO / pigpio
+  # backends, and without it the daemon dies with BadPinFactory at the
+  # first DigitalOutputDevice() call.
+  apt-get install -y -qq python3-pip python3-pil python3-psutil python3-spidev python3-gpiozero python3-lgpio
+  # Grant the daemon user access to the SPI bus + GPIO chip. Pi OS Lite
+  # ships these as 'spi' / 'gpio' group-owned 660 devices, so without
+  # group membership opening them fails with EACCES.
+  usermod -aG spi,gpio kode 2>/dev/null || true
   install -m 0755 -o kode -g kode "$KODE_ROOT/pebble/kode_nas_display.py" /home/kode/kode_nas_display.py
   install -m 0755 -o kode -g kode "$KODE_ROOT/pebble/restart-display.sh"  /home/kode/restart-display.sh
   install -m 0644 "$KODE_ROOT/pebble/kode-nas-display.service" /etc/systemd/system/kode-nas-display.service
   systemctl daemon-reload
-  systemctl enable --now kode-nas-display.service
+  systemctl enable kode-nas-display.service
+  # restart instead of just --now so a re-run picks up service-file changes
+  # without us having to track whether the unit was already running.
+  systemctl restart kode-nas-display.service
 fi
 
 # 7. kode-os CLI — symlink the dispatcher into /usr/local/bin so users
