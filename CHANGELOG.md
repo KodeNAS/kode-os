@@ -23,6 +23,12 @@ once the project leaves alpha.
 ### Fixed
 - `--uninstall` no longer hangs on `casaos-uninstall`'s interactive y/N prompt. Now pipes `yes y |` into the helper and caps the call with a 90-second `timeout`; falls back to manual teardown of casaos-* services + binaries + `/etc/casaos` + `/var/lib/casaos` + `/usr/share/casaos` if the helper still misbehaves.
 - Family-member data now survives switching URLs. Signing in as admin on a new origin (e.g. switching from `http://pebble.local` to the LAN IP, which the browser treats as a separate origin with empty localStorage) hydrates `kode_family_members` + `kode_user_roles` from server-side custom storage into the new origin's localStorage. Without this fix, family tiles were empty and the signup dupe-check would let someone re-claim an existing name on the new URL.
+- OLED auto-install on a fresh Pi 5 — five compounding bugs were keeping the SH1122 dark even when wired correctly:
+  1. `dtparam=spi=on` isn't in Pi OS Lite's default `config.txt`, so `/dev/spidev0.0` never appeared. Installer now writes it (uncommenting any pre-included line or appending a tagged one) and prompts for a reboot.
+  2. `kode-os update` short-circuited with "Already up to date" when the repo was unchanged, skipping the reconverge that would have picked up new hardware. Now always re-runs the installer after the fetch.
+  3. `systemctl list-unit-files | grep -q casaos-gateway` was a `pipefail` foot-gun: `grep -q` SIGPIPE'd systemctl mid-write, flipped the pipeline exit, and re-installed CasaOS every run (failing on transient gateway-tarball download blips). Replaced with `command -v casaos-gateway`.
+  4. The OLED daemon needs `python3-rpi-lgpio` (a chardev RPi.GPIO shim that works on the Pi 5 RP1 chip) + the `kode` user in `gpio`/`spi` groups + `SupplementaryGroups=` + `DeviceAllow=/dev/gpiochip0` + `GPIOZERO_PIN_FACTORY=rpigpio` in the systemd unit. Installer + unit now provide all of that.
+  5. `lgpio`'s C library `mkfifo`'s its notification FIFO in CWD at import time; systemd default `CWD=/` + `ProtectSystem=strict` made that silently fail. Unit now sets `WorkingDirectory=/tmp` (already in `ReadWritePaths`).
 
 ## [0.1.0-alpha] — 2026-05-24
 
