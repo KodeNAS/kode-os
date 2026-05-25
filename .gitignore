@@ -36,6 +36,7 @@ kode-os-ui/
 
 # pi-gen build output — each build.sh run clones pi-gen + writes
 # several GB of stage artifacts here. Never commit any of it.
+image-build/pi-gen-work
 image-build/pi-gen-work/
 
 # Personal-only files (you said you'd delete these later — keeping them
