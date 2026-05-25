@@ -26,9 +26,16 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-WORK_DIR="${SCRIPT_DIR}/pi-gen-work"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+# Always work out of /tmp regardless of where the repo lives. Pi-gen's
+# build-docker.sh and the chroot internals resolve paths to their
+# physical form (via pwd -P) at various points, so symlinks don't
+# rescue a repo path that contains spaces — only living in a space-
+# free dir does. /tmp is universally space-free + tmpfs-fast on most
+# systems. We symlink the working dir back into the repo for
+# convenience so `ls image-build/pi-gen-work` still works.
+WORK_DIR="/tmp/kode-pi-gen-work"
 
 # Pin pi-gen to a known-good Bookworm arm64 tag. Pi-gen tags by
 # release date — bump this when you want a newer base Pi OS. Override
@@ -97,19 +104,9 @@ command -v docker >/dev/null 2>&1 || {
   exit 1
 }
 
-# Pi-gen's build-docker.sh doesn't quote $PWD-style paths, so any
-# space in the repo path makes it bail with "/path/to/KODE: No such
-# file or directory". Refuse early with a clear fix rather than
-# letting the user wait through a Docker pull just to hit the error.
-if [[ "$SCRIPT_DIR" == *" "* ]]; then
-  echo "Pi-gen can't build from a path containing spaces:" >&2
-  echo "    $SCRIPT_DIR" >&2
-  echo >&2
-  echo "Workarounds:" >&2
-  echo "  - Move the repo to a space-free path: ~/projects/kode-os" >&2
-  echo "  - Or symlink: ln -s '$SCRIPT_DIR/..' ~/kode-os && cd ~/kode-os/image-build && ./build.sh" >&2
-  exit 1
-fi
+# (We used to guard against $SCRIPT_DIR having spaces, but now the
+# whole build runs out of $WORK_DIR=/tmp/kode-pi-gen-work which is
+# always space-free — so the repo can live anywhere.)
 
 log "Building $KODE_IMG_NAME (bundle apps: $KODE_BUNDLE_APPS)"
 
@@ -121,9 +118,13 @@ if [[ -d "$WORK_DIR" ]]; then
   sudo rm -rf "$WORK_DIR"
 fi
 
-log "Cloning pi-gen ($PI_GEN_TAG)"
+log "Cloning pi-gen ($PI_GEN_TAG) into $WORK_DIR"
 git clone --depth 1 --branch "$PI_GEN_TAG" \
   https://github.com/RPi-Distro/pi-gen.git "$WORK_DIR"
+
+# Symlink the work dir back into the repo so `ls image-build/pi-gen-work`
+# keeps working for convenience (deploy/ is the same on both paths).
+ln -sfn "$WORK_DIR" "$SCRIPT_DIR/pi-gen-work"
 
 log "Skipping stages 3, 4, 5 (desktop / NOOBS — we only need Lite + our stage)"
 for stage in stage3 stage4 stage5; do
