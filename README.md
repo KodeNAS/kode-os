@@ -1,3 +1,5 @@
+![KODE OS](assets/banner.png)
+
 # KODE OS
 
 > Your own private cloud, in a box the size of a paperback.

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#34705B"/>
+      <stop offset="100%" stop-color="#234A3D"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.25" cy="0.4" r="0.6">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rule" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect width="1280" height="640" fill="url(#glow)"/>
+
+  <g transform="translate(160 200)" fill="#FFFFFF">
+    <g transform="scale(4.2)">
+      <path d="M 4 4 H 12 V 17 L 26 4 H 38 L 21 20 L 38 36 H 26 L 12 23 V 36 H 4 Z"/>
+    </g>
+  </g>
+
+  <g font-family="'IBM Plex Sans', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif" fill="#FFFFFF">
+    <text x="360" y="290" font-size="124" font-weight="700" letter-spacing="-2">KODE OS</text>
+    <text x="362" y="360" font-size="34" font-weight="400" opacity="0.85" letter-spacing="0.3">Your own private cloud, in a box the size of a paperback.</text>
+  </g>
+
+  <line x1="362" y1="402" x2="700" y2="402" stroke="url(#rule)" stroke-width="2"/>
+
+  <g font-family="'IBM Plex Sans', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif" fill="#FFFFFF" opacity="0.6">
+    <text x="362" y="448" font-size="20" font-weight="500" letter-spacing="3">ALPHA  ·  KODE NAS  ·  PEBBLE v1</text>
+  </g>
+</svg>
