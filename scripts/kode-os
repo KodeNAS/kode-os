@@ -42,12 +42,17 @@ case "$cmd" in
     LOCAL_HEAD="$(git -C "$REPO_DIR" rev-parse HEAD)"
     REMOTE_HEAD="$(git -C "$REPO_DIR" rev-parse origin/main)"
     if [[ "$LOCAL_HEAD" == "$REMOTE_HEAD" ]]; then
-      echo "[kode-os] Already up to date ($LOCAL_HEAD)."
-      exit 0
+      echo "[kode-os] Repo already at $LOCAL_HEAD — re-running installer to reconverge state."
+    else
+      echo "[kode-os] Updating: ${LOCAL_HEAD:0:7} → ${REMOTE_HEAD:0:7}"
+      git -C "$REPO_DIR" merge --ff-only origin/main
     fi
-    echo "[kode-os] Updating: ${LOCAL_HEAD:0:7} → ${REMOTE_HEAD:0:7}"
-    git -C "$REPO_DIR" merge --ff-only origin/main
-    echo "[kode-os] Re-running installer (idempotent)…"
+    # Always re-run the installer, even when the repo is unchanged. The
+    # installer is idempotent and the whole point of `kode-os update` is
+    # "reconverge to a known-good state" — environment changes the repo
+    # doesn't see (a freshly-enabled SPI device, a missing systemd unit,
+    # a wiped /var/lib/casaos/www) should still get picked up.
+    echo "[kode-os] Running installer (idempotent)…"
     exec "$REPO_DIR/scripts/install.sh" "$@"
     ;;
   uninstall)
