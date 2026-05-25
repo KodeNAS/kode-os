@@ -30,9 +30,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORK_DIR="${SCRIPT_DIR}/pi-gen-work"
 
-# Pin pi-gen to a known-good Bookworm tag. Override with
-# PI_GEN_TAG=… if you're testing a newer release.
-PI_GEN_TAG="${PI_GEN_TAG:-2024-11-19-raspios-bookworm}"
+# Pin pi-gen to a known-good Bookworm arm64 tag. Pi-gen tags by
+# release date — bump this when you want a newer base Pi OS. Override
+# with PI_GEN_TAG=… for ad-hoc tests.
+PI_GEN_TAG="${PI_GEN_TAG:-2025-11-24-raspios-bookworm-arm64}"
 
 # Parse flags.
 WITH_APPS=0
@@ -68,6 +69,20 @@ command -v docker >/dev/null 2>&1 || {
   echo "Docker isn't installed. Install it first: https://docs.docker.com/engine/install/" >&2
   exit 1
 }
+
+# Pi-gen's build-docker.sh doesn't quote $PWD-style paths, so any
+# space in the repo path makes it bail with "/path/to/KODE: No such
+# file or directory". Refuse early with a clear fix rather than
+# letting the user wait through a Docker pull just to hit the error.
+if [[ "$SCRIPT_DIR" == *" "* ]]; then
+  echo "Pi-gen can't build from a path containing spaces:" >&2
+  echo "    $SCRIPT_DIR" >&2
+  echo >&2
+  echo "Workarounds:" >&2
+  echo "  - Move the repo to a space-free path: ~/projects/kode-os" >&2
+  echo "  - Or symlink: ln -s '$SCRIPT_DIR/..' ~/kode-os && cd ~/kode-os/image-build && ./build.sh" >&2
+  exit 1
+fi
 
 log "Building $KODE_IMG_NAME (bundle apps: $KODE_BUNDLE_APPS)"
 
