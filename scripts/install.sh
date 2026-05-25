@@ -359,13 +359,38 @@ rm -rf "$WORK_DIR"
 trap - EXIT
 
 # 6. OLED display daemon (optional, hardware-gated)
+# Pi OS Lite ships with SPI on the GPIO header disabled, so a fresh install
+# has no /dev/spidev0.0 even when an SH1122 OLED is wired up. Auto-enable
+# dtparam=spi=on in config.txt so the next boot exposes it — we can't load
+# the overlay mid-install, so defer the daemon install until reboot.
+SPI_JUST_ENABLED=0
 if [[ $INSTALL_OLED == "auto" ]]; then
   if detect_oled; then
     INSTALL_OLED=1
     log "SH1122 OLED detected on /dev/spidev0.0 — installing daemon."
   else
-    INSTALL_OLED=0
-    log "No /dev/spidev0.0 — skipping OLED daemon. (Enable SPI in raspi-config and re-run to install.)"
+    # Find the right config.txt — Bookworm+ moved it under /boot/firmware/.
+    CONFIG_TXT=""
+    for candidate in /boot/firmware/config.txt /boot/config.txt; do
+      [[ -f "$candidate" ]] && { CONFIG_TXT="$candidate"; break; }
+    done
+    if [[ -n "$CONFIG_TXT" ]] && ! grep -qE '^[[:space:]]*dtparam=spi=on' "$CONFIG_TXT"; then
+      log "Enabling SPI on the GPIO header (dtparam=spi=on → $CONFIG_TXT)…"
+      # Uncomment an existing commented line if Pi OS pre-included one;
+      # otherwise append our own. Either way the next boot exposes
+      # /dev/spidev0.0 and the OLED daemon can attach.
+      if grep -qE '^[[:space:]]*#[[:space:]]*dtparam=spi=on' "$CONFIG_TXT"; then
+        sed -i -E 's/^[[:space:]]*#[[:space:]]*(dtparam=spi=on)/\1/' "$CONFIG_TXT"
+      else
+        printf '\n# Enabled by KODE OS installer for the SH1122 OLED.\ndtparam=spi=on\n' >> "$CONFIG_TXT"
+      fi
+      SPI_JUST_ENABLED=1
+      INSTALL_OLED=0
+      log "SPI enabled — reboot, then re-run 'sudo kode-os update' to install the OLED daemon."
+    else
+      INSTALL_OLED=0
+      log "No /dev/spidev0.0 — skipping OLED daemon."
+    fi
   fi
 fi
 
@@ -418,3 +443,14 @@ cat <<EOF
   Made by KODE NAS · pebble v1
   Based on CasaOS (Apache 2.0) — github.com/IceWhaleTech/CasaOS
 EOF
+
+if (( SPI_JUST_ENABLED )); then
+  cat <<EOF
+
+  ⚠ SPI was just enabled in ${CONFIG_TXT} for the SH1122 OLED.
+      Reboot now, then run:  sudo kode-os update
+      to install the OLED daemon.
+
+      sudo reboot
+EOF
+fi
