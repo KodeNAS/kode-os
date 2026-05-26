@@ -128,6 +128,12 @@ if [[ -d "$WORK_DIR" ]]; then
   sudo rm -rf "$WORK_DIR"
 fi
 
+# Also nuke any stale pigen_work docker container from a previous
+# failed run. Pi-gen refuses to start a new build if its container
+# is already around (it doesn't auto-replace), so without this you
+# get "Container pigen_work already exists" after every failure.
+docker rm -fv pigen_work >/dev/null 2>&1 || true
+
 log "Cloning pi-gen ($PI_GEN_TAG) into $WORK_DIR"
 git clone --depth 1 --branch "$PI_GEN_TAG" \
   https://github.com/RPi-Distro/pi-gen.git "$WORK_DIR"
