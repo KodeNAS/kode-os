@@ -228,7 +228,13 @@ cp "$SCRIPT_DIR/pi-gen-config" "$WORK_DIR/config"
 
 log "Starting pi-gen build (30–60 min — go get coffee)"
 cd "$WORK_DIR"
-sudo ./build-docker.sh
+# No outer sudo: pi-gen's build-docker.sh handles its own sudo
+# wrapper for docker if rootless mode is detected (we're in the
+# docker group, so it skips that). Outer sudo would strip our
+# carefully-set KODE_* env vars before they reach build-docker.sh,
+# leaving PUBKEY_SSH_FIRST_USER and friends empty inside the
+# container.
+./build-docker.sh
 
 log "Build complete. Output:"
 ls -lh "$WORK_DIR/deploy/" || true
