@@ -89,6 +89,16 @@ if (( DEBUG_SSH )); then
   echo "==> --debug-ssh: SSH enabled, baking pubkey from $SSH_KEY_PATH"
 fi
 
+# Pi-gen's build-docker.sh runs the build inside a docker container.
+# Env vars exported here DON'T propagate into the container by default
+# — `docker run -e VAR` (without value) is the way to pass through
+# host env. PIGEN_DOCKER_OPTS gets injected into the docker run line.
+# Without this the config file (sourced inside the container) sees
+# every KODE_* variable as empty, so FIRST_USER_PASS silently uses
+# its placeholder string and PUBKEY_SSH_FIRST_USER fails the empty
+# check, killing the build.
+export PIGEN_DOCKER_OPTS="-e KODE_IMG_NAME -e KODE_BUNDLE_APPS -e KODE_FIRST_USER_PASS -e KODE_ENABLE_SSH -e KODE_SSH_PUBKEY"
+
 log() { echo "==> $*"; }
 
 # Refuse to run as root — pi-gen's own build-docker.sh will sudo
