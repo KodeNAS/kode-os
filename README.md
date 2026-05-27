@@ -14,12 +14,14 @@ KODE OS is a fork of [CasaOS](https://github.com/IceWhaleTech/CasaOS) with a cus
 
 ## What's in the box (the software box)
 
+- **Flashable image** — a single `.img.xz` you write to an SD card with Raspberry Pi Imager and boot. No SSH, no installer to run, no command line.
+- **First-boot service** — fires once on first power-on: expands the root filesystem to fill the SD card, waits for real internet (clear OLED message if Ethernet's unplugged), bootstraps CasaOS, mints a random wizard token, shows the wizard URL on the OLED + MOTD. Self-disables on success.
 - **Dashboard** — a tile-based home screen with clock, weather, file shortcuts, family-member profiles, system monitor, network status, photo-of-the-day, and per-app launchers. Six pre-made layouts plus full drag-and-drop customization.
 - **First-boot wizard** — language → system check → admin account → pebble name → app picker → layout chooser → install → per-app walkthroughs → done. Designed to take five minutes.
 - **App walkthroughs** — guided setup for Immich, Jellyfin, File Browser, Pi-hole, and Home Assistant. Each one opens the app, walks the user through account creation + mobile-app connect + recommended settings + a "you're done" screen.
 - **Family-member profiles** — per-profile dashboard layouts, optional per-member passwords, role hierarchy (viewer / editor / admin), all stored locally and synced via the CasaOS user-service custom storage.
-- **OLED display daemon** — a Python daemon driving a 2.08" SH1122 OLED over SPI, cycling through hostname/IP, storage, system status, and live app data (Immich photos backed up, Pi-hole ads blocked, Jellyfin now-playing).
-- **Auto-deploy + dev tooling** — Stop-hook auto-deploy script for fast iteration (Claude Code integration).
+- **OLED display daemon** — a Python daemon driving a 2.08" SH1122 OLED over SPI, cycling through hostname/IP, storage, system status, and live app data (Immich photos backed up, Pi-hole ads blocked, Jellyfin now-playing). Status-card mode during first-boot walks the buyer through the install in real time.
+- **`kode-os` device CLI** — `sudo kode-os update` (pull + re-run installer), `sudo kode-os uninstall` (with `--purge` / `--wipe-data` tiers), `kode-os version`.
 
 ---
 
@@ -39,32 +41,21 @@ The pebble v1 also ships with a custom case + power button + USB-C PSU — those
 
 ## Install
 
-### One-line install *(coming soon)*
+### Flash + boot (recommended)
+
+1. **Download** the latest `kode-os-*-pi5-lite.img.xz` from [the latest release](https://github.com/KodeNAS/kode-os/releases/latest).
+2. **Flash** the `.img.xz` to a microSD card with [Raspberry Pi Imager](https://www.raspberrypi.com/software/) — pick **"Use custom"** and point it at the file. Skip the customization screen unless you need Wi-Fi credentials baked in (the image already has hostname `pebble`, SSH off, no usable login — the wizard creates the admin).
+3. **Boot** the Pi 5 with Ethernet plugged in. Wait ~3-5 min on first power-on while it expands the filesystem + bootstraps CasaOS.
+4. **Open** `http://pebble.local/` in any browser on the same network. The router auto-redirects to the wizard URL.
+5. Set up admin account, pick apps, follow the walkthroughs.
+
+If you have the SH1122 OLED wired up, it walks through every step: "WAITING FOR NETWORK" → "SETTING UP / Installing CasaOS" → "OPEN IN BROWSER".
+
+**Verifying the image** — every release ships a `.sha256` alongside the `.img.xz`:
 
 ```bash
-curl -fsSL https://kodenas.dev/install.sh | sudo bash
+sha256sum -c kode-os-*-pi5-lite.img.xz.sha256
 ```
-
-> The hosted installer URL above will go live with the first public alpha. Until then, use the local installer:
-
-### Local install (from this repo)
-
-On a fresh Raspberry Pi OS Lite install, SSH in and run:
-
-```bash
-git clone https://github.com/KodeNAS/kode-os.git
-cd kode-os
-sudo ./scripts/install.sh
-```
-
-The script:
-1. Verifies you're on a Raspberry Pi 5 with a supported Raspberry Pi OS release.
-2. Installs Docker (if missing) and the upstream CasaOS runtime.
-3. Builds the KODE OS UI and overlays it onto the CasaOS web root.
-4. Optionally installs the OLED display daemon (auto-detected — requires `dtparam=spi=on` in `/boot/firmware/config.txt`).
-5. Prints the dashboard URL.
-
-Open `https://pebble.local` in any browser on the same network and run through the wizard.
 
 ### Update
 
@@ -89,22 +80,56 @@ The bare `uninstall` leaves Docker, `/DATA`, and CasaOS-pulled system packages a
 
 ---
 
+## Building the bootable image
+
+The image is built with [pi-gen](https://github.com/RPi-Distro/pi-gen) (the Pi Foundation's image-build framework) plus our custom `stage-kode-os/` that layers KODE OS on top of Pi OS Lite Bookworm arm64. Everything lives in `image-build/`.
+
+Quick start (Linux host with Docker + 20 GB free disk):
+
+```bash
+cd image-build
+./build.sh                  # slim image, 30-60 min, outputs to /tmp/kode-pi-gen-work/deploy/
+./build.sh --with-apps      # bundled-apps variant (deferred to v0.2.1)
+./build.sh --debug-ssh      # SSH-enabled variant with your ~/.ssh/id_ed25519.pub baked in
+```
+
+Full build internals + GitHub Actions setup live in [`image-build/README.md`](image-build/README.md).
+
+---
+
+## Building from source (developers only)
+
+If you'd rather layer KODE OS onto an existing Pi OS Lite install instead of flashing the image — for example to iterate on the UI or test changes — the v0.1.x install path still works:
+
+```bash
+git clone https://github.com/KodeNAS/kode-os.git
+cd kode-os
+sudo ./scripts/install.sh
+```
+
+The script installs Docker (if missing), the upstream CasaOS runtime, builds the KODE OS UI, overlays it onto the CasaOS web root, and (if `/dev/spidev0.0` exists) installs the OLED daemon. Use this only for development — buyers should flash the image.
+
+---
+
 ## Project layout
 
 ```
 kode-os/
-├── README.md          this file
-├── LICENSE            Apache 2.0
-├── NOTICE             attribution to upstream projects
-├── PRIVACY.md         data the OS handles + sends nowhere
-├── SECURITY.md        how to report vulnerabilities
-├── CONTRIBUTING.md    contribution guide
-├── CHANGELOG.md       release notes
-├── assets/            branding (logos, favicons, wallpapers)
-├── docs/              developer documentation
-├── pebble/            OLED daemon + systemd unit + helper scripts
-├── scripts/           install, HTTPS setup, deploy helpers
-└── kode-os-ui/        (separate repo) the Vue 2 dashboard UI
+├── README.md            this file
+├── LICENSE              Apache 2.0
+├── NOTICE               attribution to upstream projects
+├── PRIVACY.md           data the OS handles + sends nowhere
+├── SECURITY.md          how to report vulnerabilities
+├── CONTRIBUTING.md      contribution guide
+├── CHANGELOG.md         release notes
+├── assets/              branding (logos, favicons, wallpapers)
+├── docs/                developer documentation
+├── image-build/         pi-gen-based bootable image pipeline
+├── pebble/              OLED daemon + systemd unit + helper scripts
+├── releases/            archived release notes per tag
+├── scripts/             install, HTTPS setup, deploy helpers, kode-os CLI
+├── .github/workflows/   GitHub Actions (auto-builds image on tag pushes)
+└── kode-os-ui/          (separate repo) the Vue 2 dashboard UI
 ```
 
 The UI lives in its own repo at [KodeNAS/kode-os-ui](https://github.com/KodeNAS/kode-os-ui) — the installer clones it, builds it, and copies the production assets onto the pebble.
@@ -139,7 +164,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and pull requests welcome — ple
 
 ## Status, roadmap, support
 
-- **Status:** alpha, internal testing
+- **Status:** public alpha — [v0.2.0-alpha](https://github.com/KodeNAS/kode-os/releases/latest) is the current release.
 - **Issues:** https://github.com/KodeNAS/kode-os/issues
 - **Security:** see [SECURITY.md](SECURITY.md)
 - **Commercial support / pebble hardware:** https://kodenas.dev
