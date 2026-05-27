@@ -50,6 +50,41 @@ oled() {
   "${KODE_ROOT}/scripts/oled-status" "$@" 2>/dev/null || true
 }
 
+# wait_for_network — block until we have actual internet, not just
+# what systemd's network-online.target thinks. NetworkManager
+# "completes" network-online after a 90s timeout even with no link
+# at all, so depending only on After=network-online.target gives us
+# zero protection against "ethernet not plugged in yet." We poll a
+# real DNS+TCP path (github.com — install.sh needs it next anyway)
+# and surface the wait state on the OLED so the buyer knows to
+# plug in the cable. Returns 0 once network is up, non-zero after
+# the wait budget elapses.
+wait_for_network() {
+  local max_wait=300         # 5 min total before we give up
+  local interval=10          # poll every 10s
+  local elapsed=0
+  # Quick first check — if internet is already up (the common case
+  # with ethernet plugged in at power-on) skip the OLED message
+  # entirely so it doesn't flicker.
+  if ping -c 1 -W 2 github.com >/dev/null 2>&1; then
+    log "Network already up"
+    return 0
+  fi
+  log "No network yet — waiting up to ${max_wait}s"
+  while (( elapsed < max_wait )); do
+    local remaining=$((max_wait - elapsed))
+    oled "WAITING FOR NETWORK" "Plug in Ethernet" "retrying in ${interval}s (${remaining}s left)"
+    sleep "$interval"
+    elapsed=$((elapsed + interval))
+    if ping -c 1 -W 2 github.com >/dev/null 2>&1; then
+      log "Network is up after ${elapsed}s"
+      return 0
+    fi
+  done
+  log "No network after ${max_wait}s — bailing"
+  return 1
+}
+
 log "Starting first-boot setup"
 oled "SETTING UP" "Just a moment" "first power-on"
 
@@ -71,11 +106,18 @@ fi
 # install dance + idempotent re-runs of the rest. install.sh detects
 # "already installed" bits and skips them; the only real work here
 # should be the upstream CasaOS install.
+log "Checking for internet before CasaOS install"
+if ! wait_for_network; then
+  log "No network — leaving .firstboot-pending so we retry on next boot"
+  oled "NO NETWORK" "Plug in Ethernet" "then reboot"
+  exit 1
+fi
+
 log "Running install.sh to bootstrap CasaOS"
 oled "SETTING UP" "Installing CasaOS" "step 2 of 3 (~2 min)"
 if ! "${KODE_ROOT}/scripts/install.sh"; then
   log "install.sh failed — leaving .firstboot-pending so we retry on next boot"
-  oled "SETUP FAILED" "Check the network" "will retry on reboot"
+  oled "SETUP FAILED" "Install error — check logs" "ssh + journalctl -u kode-firstboot"
   exit 1
 fi
 
