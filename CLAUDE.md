@@ -6,7 +6,7 @@ Documentation for Claude Code (and any other coding assistant) working in this r
 
 **KODE OS** is a fork of [CasaOS](https://github.com/IceWhaleTech/CasaOS) for the **KODE NAS pebble v1** — a Raspberry Pi 5 home NAS appliance aimed at non-technical buyers. The product competes with Synology and iCloud, NOT with DIY Pi builds. Anything that requires Linux knowledge to use is a bug.
 
-Current state: **v0.1.0-alpha**, both repos published at https://github.com/KodeNAS.
+Current state: **v0.2.0-alpha** (first bootable image release), both repos published at https://github.com/KodeNAS.
 
 For full product context, branding kit, and roadmap → [docs/CLAUDE_CODE_BRIEF.md](docs/CLAUDE_CODE_BRIEF.md). Read it before making product decisions.
 
