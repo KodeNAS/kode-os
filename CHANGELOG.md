@@ -8,27 +8,55 @@ once the project leaves alpha.
 
 ## [unreleased]
 
+## [0.2.0-alpha] — 2026-05-27
+
+**The flash-and-boot release.** No more cloning + `sudo ./scripts/install.sh` — download an `.img.xz` from the GitHub release, flash with Raspberry Pi Imager, boot the Pi, finish setup in the browser. The install script still works for anyone who wants to layer KODE OS onto an existing Pi OS install.
+
+Bundles everything between `v0.1.0-alpha` and now, including the v0.1.x bug-fix work (`kode-os` CLI, tiered uninstall, OLED auto-install, README polish) plus the new bootable-image pipeline.
+
 ### Added
-- `kode-os` device CLI: `sudo kode-os update` (git pull + re-run installer), `sudo kode-os uninstall` (forwards to `install.sh --uninstall` with `--purge` / `--wipe-data` flags), `kode-os version`. Symlinked into `/usr/local/bin/kode-os` by the installer; resolves its real location with `readlink -f` so it works through the symlink.
-- Tiered uninstall in `scripts/install.sh`: bare `--uninstall` removes the KODE layer + CasaOS runtime, `--purge` additionally removes KODE-installed Docker containers + images + the Docker API override + the kode user, `--wipe-data` additionally deletes `/DATA` (requires typing `WIPE` to confirm; `--yes` skips for automation).
-- Brand banner image (`assets/banner.png` + source SVG) at the top of the README. Tagline: "Your own private cloud in 5 minutes."
-- 8 GitHub topics + repo homepage on `KodeNAS/kode-os` for discoverability.
+
+#### Bootable image
+- **Flashable image** built with [pi-gen](https://github.com/RPi-Distro/pi-gen). One `.img.xz` (~475 MB compressed, ~2.8 GB uncompressed) flashable with Raspberry Pi Imager. Boots, runs a first-boot service, completes setup over the LAN with zero CLI interaction. Pi 5 only this release; Pi 4 lands in v0.3.0.
+- **`image-build/` pipeline** in the repo: `./build.sh` clones pi-gen, layers our `stage-kode-os/` custom stage on top of Pi OS Lite Bookworm arm64, pre-builds the UI natively (saves ~30 min vs qemu-user emulation), bakes everything into the image. `--debug-ssh` opt-in flag for SSH-enabled debug builds with a baked-in pubkey; default release builds ship SSH off + no usable password.
+- **First-boot service** (`kode-firstboot.service`) runs once on first power-on: expands the root filesystem to fill the SD card, waits for real internet (not just systemd's `network-online.target` which lies if the cable is unplugged), runs `install.sh` to bootstrap CasaOS, generates a 32-hex-char random wizard token + writes it to MOTD + OLED + a web-accessible file, starts the OLED daemon. Removes its own `.firstboot-pending` marker on success so subsequent boots skip the work.
+- **OLED setup-progress display** during first-boot. New status-card mode in `kode_nas_display.py` reads `/run/kode-os/oled-status` (set by `scripts/oled-status` helper or directly by firstboot.sh) — present → overrides the normal hostname/storage rotation with a three-line title/subtitle/footer card. Buyers see "WAITING FOR NETWORK / Plug in Ethernet / retrying in 10s" instead of a dark display, "SETTING UP / Installing CasaOS / step 2 of 3 (~2 min)" during install, "OPEN IN BROWSER / pebble.local / /#/wizard/<token>" when ready.
+- **Token-gated wizard URL** (`/#/wizard/<token>`). New `kode-os-ui` route + router guard: validates the URL token against `/.wizard-token` AND checks that CasaOS reports `initialized: false` before allowing the welcome wizard to render. Bare `http://pebble.local/` auto-redirects to the token URL (fetches the file from the browser side). v0.1.0-alpha script-installs (no token file) fall through to the legacy `/welcome` path for backward compat. Threat-model caveat: the token file is fetchable from the LAN, so this is URL obfuscation rather than authentication — the real gate against unauthorized admin creation is CasaOS's `initialized` state, also checked in the guard.
+- **`kode-os` device CLI** symlinked into `/usr/local/bin/kode-os`:
+  - `sudo kode-os update` → `git fetch` + ff-merge + re-run `install.sh` (always reruns; doesn't short-circuit on "already up to date" so it picks up environment changes like fresh hardware).
+  - `sudo kode-os uninstall [--purge] [--wipe-data]` → forwards to `install.sh --uninstall` with the requested tier.
+  - `kode-os version` → `git describe` output.
+- **Tiered uninstall** in `scripts/install.sh`: bare `--uninstall` removes the KODE layer + CasaOS runtime; `--purge` additionally removes KODE-installed Docker containers + images + the Docker API override + the kode user; `--wipe-data` additionally deletes `/DATA` (requires typing `WIPE` to confirm; `--yes` skips for automation).
+- **GitHub Actions workflow** (`.github/workflows/build-image.yml`) auto-builds the image on tag pushes + uploads `.img.xz` + `.sha256` to the Release as a draft prerelease. `workflow_dispatch` for smoke tests; `--with-apps` input bakes a (deferred) bundled-apps variant in.
+- **Brand banner** at the top of the README (`assets/banner.png`). Tagline: "Your own private cloud in 5 minutes."
+- **8 GitHub topics + repo homepage** on `KodeNAS/kode-os` for discoverability.
 
 ### Changed
+- **`scripts/install.sh` is now BOTH** the live-system install path (v0.1.x) AND the first-boot bootstrap script run from the image (v0.2.0). Same script; the chroot-friendly subset runs at image-build time, the rest runs on first power-on.
 - README domain references swapped from `kode-nas.com` → `kodenas.dev` (the actual owned domain).
 - Installer closing banner now points users at `sudo kode-os update` / `sudo kode-os uninstall` instead of bare script paths.
-- Installer bumped from Node 18 → Node 20 LTS (Node 18 reached EOL April 2025; NodeSource was printing a deprecation banner on every install).
+- Installer bumped from Node 18 → Node 20 LTS (Node 18 reached EOL April 2025).
 - Installer is quieter: upstream CasaOS install output redirected to `/tmp/kode-os-casaos-install.log` so the KODE banner is the first + last thing the buyer sees.
 
 ### Fixed
-- `--uninstall` no longer hangs on `casaos-uninstall`'s interactive y/N prompt. Now pipes `yes y |` into the helper and caps the call with a 90-second `timeout`; falls back to manual teardown of casaos-* services + binaries + `/etc/casaos` + `/var/lib/casaos` + `/usr/share/casaos` if the helper still misbehaves.
-- Family-member data now survives switching URLs. Signing in as admin on a new origin (e.g. switching from `http://pebble.local` to the LAN IP, which the browser treats as a separate origin with empty localStorage) hydrates `kode_family_members` + `kode_user_roles` from server-side custom storage into the new origin's localStorage. Without this fix, family tiles were empty and the signup dupe-check would let someone re-claim an existing name on the new URL.
-- OLED auto-install on a fresh Pi 5 — five compounding bugs were keeping the SH1122 dark even when wired correctly:
-  1. `dtparam=spi=on` isn't in Pi OS Lite's default `config.txt`, so `/dev/spidev0.0` never appeared. Installer now writes it (uncommenting any pre-included line or appending a tagged one) and prompts for a reboot.
-  2. `kode-os update` short-circuited with "Already up to date" when the repo was unchanged, skipping the reconverge that would have picked up new hardware. Now always re-runs the installer after the fetch.
-  3. `systemctl list-unit-files | grep -q casaos-gateway` was a `pipefail` foot-gun: `grep -q` SIGPIPE'd systemctl mid-write, flipped the pipeline exit, and re-installed CasaOS every run (failing on transient gateway-tarball download blips). Replaced with `command -v casaos-gateway`.
-  4. The OLED daemon needs `python3-rpi-lgpio` (a chardev RPi.GPIO shim that works on the Pi 5 RP1 chip) + the `kode` user in `gpio`/`spi` groups + `SupplementaryGroups=` + `DeviceAllow=/dev/gpiochip0` + `GPIOZERO_PIN_FACTORY=rpigpio` in the systemd unit. Installer + unit now provide all of that.
-  5. `lgpio`'s C library `mkfifo`'s its notification FIFO in CWD at import time; systemd default `CWD=/` + `ProtectSystem=strict` made that silently fail. Unit now sets `WorkingDirectory=/tmp` (already in `ReadWritePaths`).
+- `--uninstall` no longer hangs on `casaos-uninstall`'s interactive y/N prompt. Pipes `yes y |` into the helper, caps with a 90-second `timeout`, manual fallback if it still misbehaves.
+- Family-member data survives switching URLs. Admin login on a new origin (e.g. `http://pebble.local` → LAN IP) now hydrates `kode_family_members` + `kode_user_roles` from server-side custom storage into the new origin's localStorage.
+- OLED auto-install on a fresh Pi 5 — five cascading bugs were keeping the SH1122 dark even when wired correctly:
+  1. `dtparam=spi=on` isn't in Pi OS Lite's default `config.txt`, so `/dev/spidev0.0` never appeared. Installer writes it now (uncommenting any pre-included line or appending a tagged one).
+  2. `kode-os update` used to short-circuit with "Already up to date" when the repo was unchanged, skipping the reconverge that would have picked up new hardware. Now always re-runs the installer after the fetch.
+  3. `systemctl list-unit-files | grep -q casaos-gateway` was a `pipefail` foot-gun: `grep -q` SIGPIPE'd systemctl mid-write, flipped the pipeline exit, and re-installed CasaOS every run. Replaced with `command -v casaos-gateway`.
+  4. The OLED daemon needs `python3-rpi-lgpio` (a chardev RPi.GPIO shim that works on the Pi 5 RP1 chip) + the `kode` user in `gpio`/`spi` groups + `SupplementaryGroups=` + `DeviceAllow=/dev/gpiochip0` + `GPIOZERO_PIN_FACTORY=rpigpio` in the systemd unit. All in place now.
+  5. `lgpio`'s C library `mkfifo`'s its notification FIFO in CWD at import time; systemd default `CWD=/` + `ProtectSystem=strict` made that silently fail. Unit now sets `WorkingDirectory=/tmp`.
+- Dashboard layout no longer snaps to even-thirds columns on every refresh. `loadWeights()` now falls back to the mode's authored defaults (`[0.75, 1.75, 0.7]` for Beginner) instead of `Array(count).fill(1)` when the weights file is missing, and `resetLayoutToDefault()` persists the new state rather than only updating in-memory.
+- Wizard URL printed in MOTD/OLED now includes the `#` for Vue's hash-routed router. Pre-fix, pasting the URL into a browser gave a casaos-gateway 404 because `/wizard/<token>` was treated as a literal static-file path.
+- Pi-gen build pipeline: 20 separate fixes across `build.sh` + `pi-gen-config` + the chroot stage to actually produce a flashable image on a clean Ubuntu CI runner. (Each one shipped as its own commit; see git log for the full saga.)
+
+### Known limitations
+- **Pi 5 only.** Pi 4 support requires different GPIO + lgpio handling; landing in v0.3.0.
+- **Ethernet required for first boot.** Wi-Fi setup via Raspberry Pi Imager's customization screen (Ctrl+Shift+X before flashing) — an in-wizard Wi-Fi step is v0.3.0 work.
+- **No bundled-apps variant yet.** The slim image (475 MB) pulls Immich/Jellyfin/Pi-hole/etc. at first-boot. The `--with-apps` flag exists in `build.sh` but the Docker pre-pull logic lands in v0.2.1.
+- **Wizard token is URL obfuscation, not auth.** A LAN attacker who reads `/.wizard-token` could race the buyer to admin creation during the few-minute setup window. The CasaOS `initialized` flag is the real gate. Server-validated tokens land in v0.3.0.
+- Inherited from v0.1.0-alpha: UI-only family members (single CasaOS admin underneath), default HTTP, no 2FA, upstream CasaOS app catalogue. All on the v1.0 roadmap.
 
 ## [0.1.0-alpha] — 2026-05-24
 
@@ -81,5 +109,6 @@ First publishable alpha. Forked from CasaOS 0.4.5.
 
 ---
 
-[unreleased]: https://github.com/KodeNAS/kode-os/compare/v0.1.0-alpha...HEAD
+[unreleased]: https://github.com/KodeNAS/kode-os/compare/v0.2.0-alpha...HEAD
+[0.2.0-alpha]: https://github.com/KodeNAS/kode-os/releases/tag/v0.2.0-alpha
 [0.1.0-alpha]: https://github.com/KodeNAS/kode-os/releases/tag/v0.1.0-alpha
