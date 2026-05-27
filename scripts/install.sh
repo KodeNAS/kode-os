@@ -3,13 +3,23 @@
 # KODE OS installer
 # https://github.com/KodeNAS/kode-os
 #
-# Usage (on a fresh Raspberry Pi OS Lite install, as root):
+# Production users do NOT run this script directly. As of v0.2.0-alpha,
+# KODE OS ships as a flashable .img.xz from:
 #
-#   curl -fsSL https://kodenas.dev/install.sh | sudo bash
+#   https://github.com/KodeNAS/kode-os/releases
 #
-# Or, after cloning this repo:
+# Flash that image with Raspberry Pi Imager and boot — no terminal,
+# no installer to run. Full guide: https://docs.kodenas.dev/os/installation/
 #
-#   sudo ./scripts/install.sh
+# This script is kept for two roles:
+#
+#   1. First-boot bootstrap inside the image (kode-firstboot.service
+#      invokes the chroot-friendly subset of this script to bring up
+#      CasaOS on first power-on).
+#   2. Developers layering KODE OS onto an existing Raspberry Pi OS
+#      Lite install. From a fresh repo clone:
+#
+#        sudo ./scripts/install.sh
 #
 # Flags:
 #   --uninstall    Remove KODE OS UI overlay + OLED daemon + CasaOS

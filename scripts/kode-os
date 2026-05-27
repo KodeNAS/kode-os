@@ -31,7 +31,9 @@ case "$cmd" in
   update)
     if [[ ! -d "$REPO_DIR/.git" ]]; then
       echo "kode-os: $REPO_DIR isn't a git checkout — can't update." >&2
-      echo "         Re-install: git clone https://github.com/KodeNAS/kode-os.git && sudo ./kode-os/scripts/install.sh" >&2
+      echo "         To upgrade, flash a fresh image from:" >&2
+      echo "           https://github.com/KodeNAS/kode-os/releases" >&2
+      echo "         Full guide: https://docs.kodenas.dev/os/installation/" >&2
       exit 1
     fi
     cd "$REPO_DIR"
