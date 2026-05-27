@@ -51,7 +51,13 @@ DISABLE_FIRST_BOOT_USER_RENAME=1
 # debugging. The kode account stays passwd -l locked either way;
 # only pubkey auth ever works.
 ENABLE_SSH="${KODE_ENABLE_SSH:-0}"
-PUBKEY_ONLY_SSH=1
+# PUBKEY_ONLY_SSH mirrors ENABLE_SSH. When SSH is off there's no
+# auth model to gate, and pi-gen errors with "Must set
+# 'PUBKEY_SSH_FIRST_USER' to a valid SSH public key" if
+# PUBKEY_ONLY_SSH=1 + no key — even when ENABLE_SSH=0. When SSH
+# is on (--debug-ssh), we keep PUBKEY_ONLY_SSH=1 so password auth
+# stays off and only the baked-in pubkey works.
+PUBKEY_ONLY_SSH="${KODE_ENABLE_SSH:-0}"
 PUBKEY_SSH_FIRST_USER="${KODE_SSH_PUBKEY:-}"
 
 APT_PROXY=""
