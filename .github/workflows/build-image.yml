@@ -1,0 +1,115 @@
+name: Build OS Image
+
+# Triggers:
+#   - Tag pushes matching v*  → build + upload to that tag's release
+#                                (release created as draft + prerelease).
+#   - Manual dispatch         → build but don't upload anywhere.
+#                                Useful for smoke-testing the build
+#                                without cutting a release.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      with_apps:
+        description: 'Build the with-apps variant too (slower, bigger)'
+        required: false
+        default: 'false'
+
+jobs:
+  build:
+    name: Build pi5 image
+    runs-on: ubuntu-latest
+    # Pi-gen on the GitHub-hosted runner: stage0 (debootstrap) +
+    # stage2 (Pi OS Lite base) account for most of this. Cap at 2 h
+    # so a hung apt mirror doesn't burn the whole free-tier budget.
+    timeout-minutes: 120
+    permissions:
+      contents: write  # need this to upload to releases
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Free up disk space on the runner
+        # GitHub-hosted runners ship with ~14 GB free; pi-gen needs
+        # ~20 GB for stage0+1+2+ours + image export. Removing the
+        # preinstalled Android/.NET/Haskell toolchains buys us ~30
+        # GB so the build doesn't ENOSPC mid-stage.
+        run: |
+          echo "Before:"
+          df -h /
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo apt-get clean
+          echo "After:"
+          df -h /
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up QEMU (so arm64 binfmt works on the x86 runner)
+        # Pi-gen needs qemu-aarch64-static + binfmt_misc registration
+        # to chroot into the arm64 rootfs. The official tonistiigi
+        # image registers binfmt for every arch and is what
+        # docker/setup-qemu-action uses under the hood.
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build slim image
+        run: |
+          cd image-build
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Build with-apps image (optional)
+        if: github.event.inputs.with_apps == 'true'
+        run: |
+          cd image-build
+          ./build.sh --with-apps
+
+      - name: Locate built images + generate checksums
+        id: artifacts
+        run: |
+          cd /tmp/kode-pi-gen-work/deploy
+          ls -lh
+          # Generate SHA256 next to each .img.xz so the release page
+          # has both files; downloaders can verify integrity.
+          for img in *.img.xz; do
+            sha256sum "$img" > "${img}.sha256"
+          done
+          # Tell later steps where the files live.
+          echo "dir=/tmp/kode-pi-gen-work/deploy" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifacts to workflow run (for dispatch builds)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kode-os-images
+          path: |
+            ${{ steps.artifacts.outputs.dir }}/*.img.xz
+            ${{ steps.artifacts.outputs.dir }}/*.sha256
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Attach artifacts to GitHub Release (for tag builds)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          # Release is created as a draft prerelease so we can
+          # review/edit notes before publishing. The actual notes
+          # come from releases/release-notes-<tag>.md if present
+          # (manually written + checked into the repo).
+          draft: true
+          prerelease: true
+          generate_release_notes: false
+          files: |
+            ${{ steps.artifacts.outputs.dir }}/*.img.xz
+            ${{ steps.artifacts.outputs.dir }}/*.sha256
+          fail_on_unmatched_files: true
