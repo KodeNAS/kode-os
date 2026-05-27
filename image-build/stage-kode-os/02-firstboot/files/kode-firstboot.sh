@@ -140,7 +140,7 @@ log "Wizard token generated (32 hex chars; 0600 at $TOKEN_FILE, 0644 at $WEB_TOK
 # on some networks.
 HOSTNAME=$(hostname)
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-WIZARD_PATH="/wizard/${TOKEN}"
+WIZARD_PATH="/#/wizard/${TOKEN}"
 
 # Persist the URL so kode-os-ui (and anything else) can read it
 # without parsing the token directly.
