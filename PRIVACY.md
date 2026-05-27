@@ -1,6 +1,6 @@
 # Privacy policy
 
-> Last updated: 2026-05-24 · Applies to: KODE OS alpha
+> Last updated: 2026-05-27 · Applies to: KODE OS v0.2.0-alpha
 
 KODE OS is built to keep your data on your own pebble. This document describes exactly what the OS collects, where it sends information, and what you can turn off.
 
@@ -32,7 +32,7 @@ The following all live on the pebble's disk and are never transmitted off it by 
 | `*.docker.io` and the image registries each app pulls from | Downloading container images when you install an app | Don't install apps |
 | App-specific traffic (Immich-mobile → your pebble, Jellyfin client → your pebble, etc.) | These run on YOUR network and go to your pebble, not to KODE NAS | Don't install/connect the apps |
 | `casaos.io` (upstream update check) | Inherited from CasaOS upstream — checks for new CasaOS releases | Disable in Settings → System Updates (CasaOS panel) |
-| `github.com` (when the installer runs) | One-time clone of the kode-os-ui repo during install | Doesn't run after install |
+| `github.com` + `get.docker.com` (first boot only) | First-boot bootstraps CasaOS (downloads upstream binaries) and Docker (downloads convenience installer). Doesn't run again — the `.firstboot-pending` marker is removed on success. | Use the future "with-apps" bundled image variant when it ships in v0.2.1 — that one ships the dependencies pre-pulled. |
 
 That's it. There is no other outbound traffic introduced by KODE OS.
 
@@ -42,19 +42,24 @@ The dashboard sets the following in your browser's `localStorage`:
 
 - `access_token`, `refresh_token` — your CasaOS auth session
 - `kode_active_member` — which family-member profile is active
-- `kode_family_members` — local mirror of the family-member list
-- `kode_remembered_admin` — encrypted-at-rest only by browser sandbox; lets family members sign in on the same browser after the admin signs out without re-auth (see "Security trade-off" below)
-- `kode_columns_layout_v2`, `kode_columns_weights_v1`, widget settings — your dashboard layout
+- `kode_family_members`, `kode_user_roles` — local mirror of the family-member list + role assignments (the source of truth is server-side CasaOS custom storage; the local mirror lets the dashboard render without a round-trip every load and survives the browser working offline against the pebble)
+- `kode_columns_layout_v2`, `kode_columns_weights_v1`, `kode_column_count_v1`, widget settings — your dashboard layout
+- `kode_chosen_template_v1` — which pre-made layout you picked
 - `kode_tour_seen`, `kode_hint_mode` — onboarding state
-- `wallpaper`, `lang`, `version`, `expires_at` — display preferences
+- `wallpaper`, `lang`, `version`, `expires_at`, `user` — display preferences + session metadata
 
-None of this is transmitted to KODE NAS or any third party.
+None of this is transmitted to KODE NAS or any third party. To clear it, sign out and clear the browser's local storage for `http://pebble.local`. The Factory Reset flow in Settings clears it too.
 
-## Security trade-off
+## Wizard token
 
-The `kode_remembered_admin` key stores the admin's CasaOS username and password in the browser's `localStorage` so family members can sign in without the admin being present at the moment. This is a "remember me" trade-off: anyone with access to that browser's storage can extract them. Acceptable for a shared home appliance; not appropriate for a multi-tenant office.
+On first boot, KODE OS generates a 32-hex-char random token and writes it to two places:
 
-If you want it gone, sign out and clear the browser's local storage for `https://pebble.local`. The wider Factory Reset flow in Settings clears it too.
+- `/opt/kode-os/.wizard-token` — mode 0600, root-only, the canonical copy
+- `/var/lib/casaos/www/.wizard-token` — mode 0644, web-accessible, read by the UI router to validate the wizard URL
+
+The web-accessible copy means anyone who can reach the dashboard on your LAN can read the token. This is **URL obfuscation, not authentication** — the real protection against unauthorized admin creation is CasaOS's `initialized` flag (the wizard refuses to render once an admin exists). The threat model assumes a trusted home LAN; if you're worried about a hostile network during the ~5 minute setup window, set up the pebble offline first.
+
+Server-validated tokens (so the token is never readable from outside root) are a v0.3.0 item.
 
 ## Children's privacy
 
@@ -70,4 +75,4 @@ When this policy changes materially, the new version will land in this file (`PR
 
 ## Contact
 
-For privacy questions or to report a concern: open an issue at https://github.com/KodeNAS/kode-os/issues or email privacy@kode-nas.com (the latter goes live with the first public release).
+For privacy questions or to report a concern: open an issue at https://github.com/KodeNAS/kode-os/issues or email privacy@kodenas.dev.
