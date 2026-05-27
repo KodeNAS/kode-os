@@ -15,7 +15,7 @@ KODE OS is currently in **alpha**. Only the `main` branch receives security fixe
 
 Instead:
 
-1. Email `security@kode-nas.com` *(goes live with the first public alpha — until then, use the private form at https://kode-nas.com/security)*.
+1. Email `security@kodenas.dev` *(goes live with the first public alpha — until then, use the private form at https://kodenas.dev/security)*.
 2. Include:
    - A description of the issue + the impact you've assessed.
    - Steps to reproduce on a stock KODE OS install.

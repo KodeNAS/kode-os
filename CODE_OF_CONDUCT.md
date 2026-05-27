@@ -18,7 +18,7 @@ KODE OS is a small project run by a small team. We want it to stay a place where
 
 ## Enforcement
 
-If you witness or experience behaviour that breaks the rules above, email `conduct@kode-nas.com` *(live with the first public alpha — until then, message the maintainers via GitHub)*.
+If you witness or experience behaviour that breaks the rules above, email `conduct@kodenas.dev` *(live with the first public alpha — until then, message the maintainers via GitHub)*.
 
 We will:
 

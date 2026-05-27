@@ -5,7 +5,7 @@
 #
 # Usage (on a fresh Raspberry Pi OS Lite install, as root):
 #
-#   curl -fsSL https://kode-nas.com/install.sh | sudo bash
+#   curl -fsSL https://kodenas.dev/install.sh | sudo bash
 #
 # Or, after cloning this repo:
 #

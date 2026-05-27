@@ -70,6 +70,6 @@ By submitting a contribution you agree it can be released under the [Apache Lice
 ## Questions
 
 GitHub Discussions: https://github.com/KodeNAS/kode-os/discussions  
-Email (general): hello@kode-nas.com *(live with the first public alpha)*
+Email (general): hello@kodenas.dev *(live with the first public alpha)*
 
 Thanks for helping make a NAS that grandparents can actually use.
