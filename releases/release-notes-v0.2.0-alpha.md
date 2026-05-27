@@ -35,6 +35,26 @@ cd kode-os
 sudo ./scripts/install.sh
 ```
 
+## Verifying the image
+
+Every release ships a `.sha256` sidecar next to the `.img.xz`. After downloading both into the same folder:
+
+```bash
+sha256sum -c kode-os-v0.2.0-alpha-pi5-lite.img.xz.sha256
+```
+
+Expected output: `kode-os-v0.2.0-alpha-pi5-lite.img.xz: OK`. If you see `FAILED` or `WARNING`, your download is incomplete or tampered — re-download from the release page.
+
+## Upgrading from v0.1.0-alpha
+
+There is no in-place upgrade path. v0.1.0-alpha is a script-installed layer on Pi OS Lite; v0.2.0-alpha is a flashed image with its own first-boot service. To move over:
+
+1. Back up anything under `/DATA` you want to keep (file share, USB drive, another machine).
+2. Flash the v0.2 image to a fresh SD card (or wipe your existing one). The image's filesystem layout differs from the script-installed one, so re-flashing is the supported path.
+3. Boot, run the new wizard, restore your `/DATA` files.
+
+The `kode-os` device CLI (`sudo kode-os update`) only updates within the same major install path. v0.1 → v0.2 is a re-flash, not an update.
+
 ## What's new since v0.1.0-alpha
 
 ### The big stuff
@@ -62,7 +82,8 @@ Full technical changelog: [CHANGELOG.md](https://github.com/KodeNAS/kode-os/blob
 
 ## Known limitations
 
-- **Pi 5 only.** Pi 4 needs different GPIO handling — landing in v0.3.0.
+- **Pi 5 only — and only the 4 GB model is actively tested.** 8 GB is expected to work but is unverified this release. Pi 4 needs different GPIO handling and lands in v0.3.0.
+- **SSH is disabled by default.** Production builds ship with no usable login (the wizard creates the admin account, but SSH itself stays off). Logs and a built-in terminal will surface in the dashboard's Settings panel; until then, debugging on the device means flashing the `--debug-ssh` build, which bakes in your `~/.ssh/id_ed25519.pub` and enables sshd.
 - **Ethernet recommended for first boot.** Wi-Fi works if you set the credentials in Raspberry Pi Imager's customization screen before flashing. An in-wizard Wi-Fi step is on the roadmap.
 - **No bundled-apps variant yet.** First-boot pulls apps when the buyer selects them, so internet is needed during setup.
 - **Wizard token is URL obfuscation, not authentication.** The token file is readable from the LAN, so a determined attacker on the same network could race the buyer to admin creation during the ~5-minute setup window. The real defense is CasaOS's `initialized` flag (also checked). Server-validated tokens are a v0.3.0 item.
