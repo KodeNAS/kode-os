@@ -4,6 +4,8 @@
 
 > Your own private cloud, in a box the size of a paperback.
 
+> ⭐ **If KODE OS works for you, please [star the repo](https://github.com/KodeNAS/kode-os).** It's the single best way to help other people discover the project.
+
 **KODE OS** is the operating system that ships on the [KODE NAS pebble](https://kodenas.dev) — a small, beginner-friendly home NAS appliance built around a Raspberry Pi 5. It turns the Pi into a private cloud for your photos, files, and media, without the Synology price tag or the DIY Pi-build complexity.
 
 > ⚠️ **alpha** — this release is for early adopters and developers. APIs, defaults, and the install path will change. Don't run it on hardware you can't reflash.

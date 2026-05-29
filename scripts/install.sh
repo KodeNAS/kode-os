@@ -470,6 +470,10 @@ cat <<EOF
   Uninstall:         sudo kode-os uninstall      (--purge / --wipe-data for deeper)
   Upstream log:      ${CASAOS_LOG}
 
+  ⭐ If KODE OS worked for you, please star the repo:
+      https://github.com/KodeNAS/kode-os
+      It helps other people find the project.
+
   Made by KODE NAS · pebble v1
   Based on CasaOS (Apache 2.0) — github.com/IceWhaleTech/CasaOS
 EOF
